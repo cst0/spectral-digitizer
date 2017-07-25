@@ -98,11 +98,9 @@ unsigned long long steps_to_take = 0;
 unsigned long long steps_taken   = 0;
 unsigned int step_delay = 10;
 
-unsigned long long steps_from_home = 0;
-unsigned char steps_from_home_direction = 0;
+long long steps_from_home = 0;
 
-unsigned long long steps_from_end = 0;
-unsigned char steps_from_end_direction = 3;
+long long steps_from_end = 0;
 
 unsigned int blinks_every_x_cycles = 100;
 unsigned int blinks_taken = 0;
@@ -257,53 +255,92 @@ void cli_clear(void){
 }
 
 void cli_help(void){
-    printf("\r\n");
+    printf("\n\r");
     printf("Spectrum Digitizer %s, Christopher Thierauf (chris@cthiearauf.com)\n\r", VERSION);
     printf("COMMMANDS\n\r");
-    printf("   move     \t Move the motor a given number of steps. \n\r");
+    printf("   move     \t Move the motor a given number of steps.\n\r");
     printf("   movecm   \t Move the motor a given number of centimeters.\n\r");
     printf("   scan     \t Scan the full length of the plate.\n\r");
     printf("   scancm   \t Scan from the current position the given number of centimeters.\n\r");
-    printf("   direction\t Set the default direction for this session. \n\r");
-    printf("   setdelay \t Set the minimum delay between steps.\r\n");
+    printf("   direction\t Set the default direction for this session.\n\r");
+    printf("   setdelay \t Set the minimum delay between steps.\n\r");
     printf("   status   \t Get the current status of the digitizer.\n\r");
     printf("   halt     \t Stop all current actions.\n\r");
     printf("   manual   \t Allow for manual movement of slider (disengage motor)\n\r");
     printf("   gohome   \t Go to the position set as home.\n\r");
     printf("   sethome  \t Set the current position as home.\n\r");
-    printf("   goend    \t Go to the position set as end. \n\r");
-    printf("   setend   \t Set the current position as end. \n\r");
-    printf("   clear    \t Clear the screen. \r\n");
+    printf("   goend    \t Go to the position set as end.\n\r");
+    printf("   setend   \t Set the current position as end.\n\r");
+    printf("   clear    \t Clear the screen.\n\r");
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
-    printf("More help, documentation, and license info can be found in the manual. \n\r");
-    printf("Because of a lack of space on this device, the manual is online at \n\r");
-    printf("cthierauf.com/digitizer-manual \r\n");
+    printf("More help, documentation, and license info can be found in the manual.\n\r");
+    printf("Because of a lack of space on this device, the manual is online at\n\r");
+    printf("cthierauf.com/digitizer-manual\n\r");
 }
 
 void cli_helpCommand(void){
     char searchArray[20];
     unsigned char count;
+
     for(count = 0; count < 20; ++count){
         searchArray[count] = userCommand[count+5];
     }
+
     printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r");
 
     // The different commands are simplified into numbers so that they can be
     // placed into a switch statement.
     switch (toNumber(searchArray)) {
         case 43:    // goend
+            printf("Usage: goend\n\r");
+            printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
+            break;
         case 50:    // move
+            printf("Usage: move <direction> [steps]\n\r");
+            printf("Moves the motor the given number of steps in the default direction, unless a direction has been given.\n\r");
+            break;
         case 53:    // help
+            printf("help: Get help on different functions and abilities of this digitizer.\n\r");
+            break;
         case 76:    // setend
+            printf("Usage: setend\n\r");
+            printf("Set the current position as the end position so that it can be referenced by other commands.\n\r");
+            break;
         case 86:    // halt
+            printf("help: Get help on different functions and abilities of this digitizer.\n\r");
+            break;
         case 93:    // gohome
+            printf("Usage: gohome\n\r");
+            printf("Go to the position remembered as 'home', defaulting to the startup position.\n\r");
+            break;
         case 98:    // scan
+            printf("Usage: scan\n\r");
+            printf("Scans from the home position to the end position, saving the digital output.\n\r");
+            break;
         case 140:   // sethome
+            printf("Usage: sethome\n\r");
+            printf("Set the current position as home so that it can be referenced by other commands.\n\r");
+            break;
         case 221:   // manual
+            printf("Usage: manual\n\r");
+            printf("Allow for manual movement of the slider by disengaging the motor. Hit any key to exit manual mode.\n\r");
+            break;
         case 251:   // status
+            printf("Usage: status\n\r");
+            printf("View the current status of various settings and activities of the digitizer.\n\r");
+            break;
         case 356:   // setdelay
+            printf("Usage: setdelay [delay in ms]\n\r");
+            printf("Sets the minimum delay between each step in milliseconds. Delays may end up slightly longer because of other commands being typed/executed.\n\r");
+            break;
         case 399:   // direction
+            printf("Usage: direction [right/left]\n\r");
+            printf("Sets the default direction of movement and scanning.\n\r");
+            break;
+        default:
+            printf("That command wasn't found.\n\r");
+
     }
 }
 
@@ -325,7 +362,7 @@ void cli_direction(void){
         badFormatError();
     }
 
-    printf("Direction is %i \n\r", directionpin);
+    printf("Direction is %i\n\r", directionpin);
 }
 
 void cli_setdelay(void){
@@ -333,7 +370,7 @@ void cli_setdelay(void){
 }
 
 void cli_manual(void){
-    printf("\n\rManual mode active. Move slider manually, hit any key to exit this mode. \r\n");
+    printf("\n\rManual mode active. Move slider manually, hit any key to exit this mode.\n\r");
     manualpin = 1;
     while(!waitForKey());
 
@@ -341,31 +378,93 @@ void cli_manual(void){
 }
 
 void cli_gohome(void){
-
+    if(steps_from_home > 0){
+        setSteps(steps_from_home);
+    } else if(steps_from_home < 0){
+        direction ~= direction
+        setSteps(steps_from_home * -1);
+    }
 }
 
 void cli_sethome(void){
-
+    steps_from_home = 0;
 }
 
 void cli_goend(void){
-
+    if(steps_from_end > 0){
+        setSteps(steps_from_end);
+    } else if(steps_from_end < 0){
+        direction ~= direction
+        setSteps(steps_from_end * -1);
+    }
 }
 
 void cli_setend(void){
-
+    steps_from_end = 0;
 }
 
 void cli_status(void){
-
+    printf("Version:    %s\n\r", version);
+    printf("Steps:      %u of %u\n\r", steps_taken, steps_to_take);
+    printf("Direction:  %u\n\r", directionpin);
 }
 
 void cli_halt(void){
-
+    printf("Stopping any movement... ");
+    steps_to_take   = 0;
+    steps_taken     = 0;
+    stepperpulsepin = 0;
+    printf("Stopped. \r\n");
+    blinks_mode     = 0;
+    printf("Entering manual mode. \r\n");
+    cli_manual();
 }
 
 void doInput(void){
-
+    switch (toNumber(userCommand)) {
+        case 43:    // goend
+            cli_goend();
+            break;
+        case 50:    // move
+            cli_move();
+            break;
+        case 53:    // help
+            if( userCommandPos > 4 ){
+                cli_helpCommand();
+            } else {
+                cli_help();
+            }
+            break;
+        case 76:    // setend
+            cli_setend();
+            break;
+        case 86:    // halt
+            cli_halt();
+            break;
+        case 93:    // gohome
+            cli_gohome();
+            break;
+        case 98:    // scan
+            cli_setdelay();
+            break;
+        case 140:   // sethome
+            cli_sethome();
+            break;
+        case 221:   // manual
+            cli_manual();
+            break;
+        case 251:   // status
+            cli_status();
+            break;
+        case 356:   // setdelay
+            setdelay();
+            break;
+        case 399:   // direction
+            cli_direction();
+            break;
+        default:
+            printf("That command wasn't found.\n\r");
+    }
 }
 
 void doBackspace(void){
@@ -390,7 +489,7 @@ void handleUART(void){
         holderChar = RCREG;
         if(holderChar == 13 || holderChar == 10){ // Checking for Line Feed or Carriage Return
             if(userCommandPos){
-                printf("\r\n");
+                printf("\n\r");
                 doInput();
                 clearUserCommand();
             }
