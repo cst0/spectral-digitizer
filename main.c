@@ -160,83 +160,184 @@ void variableDelay_ms(int delay){
 }
 
 void doBlinks(void){
-
+    ++blinks_taken;
+    if(blinks_taken == blinks_every_x_cycles){
+        blinks_taken = 0;
+        LEDpin = ~LEDpin;
+    }
 }
 
 void doMoves(void){
-
+    stepperpulsepin = 1;
+    variableDelay_mu(step_delay);
+    stepperpulsepin = 0;
+    variableDelay_mu(step_delay);
 }
 
 bool shouldMove(void){
-
+    return (steps_taken != steps_to_take);
 }
 
 unsigned long long parseStringToInt(char toParse[], int startPoint){
+    unsigned long long returnInt = 0;
+    int storeInt;
+    unsigned int count = startPoint;
+    do{
+        storeInt = toParse[count];
+        storeInt -= 48;
+        if(storeInt >= 0 && storeInt <= 9){
+            returnInt = (returnInt*10)+storeInt;
+            ++count;
+        }
 
+    } while (storeInt >= 0 && storeInt <= 9);
+
+    return returnInt;
 }
 
 void echo(char echoChar){
-
+    while(!TXSTAbits.TRMT);
+    TXREG = echoChar;
 }
 
 void buildCommand(char charIn){
-
-}
-
-int getCharArraySize(char inputArray[]){
-
+    echo(charIn);
+    userCommand[userCommandPos] = charIn;
+    ++userCommandPos;
 }
 
 void clearUserCommand(void){
-
+    unsigned int count = 0;
+    for(count = 0; count < 99; ++count){
+        userCommand[count] = 0x0;
+    }
+    userCommandPos = 0;
 }
 
 void putch(unsigned char data){
+    while(!PIR1bits.TXIF);
 
+    TXREG = data;
 }
 
 void printPrompt(void){
-
+    printf("\n\rcmd> ");
 }
 
 void startmsg(void){
+    printf("Spectrum Digitizer, version %s\n\rType 'help' for a list of commands.\n\r", version);
+    printPrompt();
+}
 
+int toNumber(char convertThis[]){
+    int count;
+    int returnAmount = 0;
+
+    for(count = 0; convertThis[count] != 0x0; ++count){
+        returnAmount += (changeThis[count] % 25) * count
+    }
+
+    return returnAmount;
 }
 
 bool waitForKey(void){
-
+    if(PIR1bits.RCIF){
+        char disposable = RCREG;
+        return true;
+    }
+    return false;
 }
 
 void cli_clear(void){
-
+    int count = 0;
+    for(count = 0; count < 100; ++count){
+        printf("\n");
+    }
+    printf("\r");
 }
 
 void cli_help(void){
-
+    printf("\r\n");
+    printf("Spectrum Digitizer %s, Christopher Thierauf (chris@cthiearauf.com)\n\r", VERSION);
+    printf("COMMMANDS\n\r");
+    printf("   move     \t Move the motor a given number of steps. \n\r");
+    printf("   movecm   \t Move the motor a given number of centimeters.\n\r");
+    printf("   scan     \t Scan the full length of the plate.\n\r");
+    printf("   scancm   \t Scan from the current position the given number of centimeters.\n\r");
+    printf("   direction\t Set the default direction for this session. \n\r");
+    printf("   setdelay \t Set the minimum delay between steps.\r\n");
+    printf("   status   \t Get the current status of the digitizer.\n\r");
+    printf("   halt     \t Stop all current actions.\n\r");
+    printf("   manual   \t Allow for manual movement of slider (disengage motor)\n\r");
+    printf("   gohome   \t Go to the position set as home.\n\r");
+    printf("   sethome  \t Set the current position as home.\n\r");
+    printf("   goend    \t Go to the position set as end. \n\r");
+    printf("   setend   \t Set the current position as end. \n\r");
+    printf("   clear    \t Clear the screen. \r\n");
+    printf("   help     \t Display this help dialogue\n\r");
+    printf("Try help (command) for more information about the given command and command usage.\n\r");
+    printf("More help, documentation, and license info can be found in the manual. \n\r");
+    printf("Because of a lack of space on this device, the manual is online at \n\r");
+    printf("cthierauf.com/digitizer-manual \r\n");
 }
 
 void cli_helpCommand(void){
+    char searchArray[20];
+    unsigned char count;
+    for(count = 0; count < 20; ++count){
+        searchArray[count] = userCommand[count+5];
+    }
+    printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r");
 
+    // The different commands are simplified into numbers so that they can be
+    // placed into a switch statement.
+    switch (toNumber(searchArray)) {
+        case 43:    // goend
+        case 50:    // move
+        case 53:    // help
+        case 76:    // setend
+        case 86:    // halt
+        case 93:    // gohome
+        case 98:    // scan
+        case 140:   // sethome
+        case 221:   // manual
+        case 251:   // status
+        case 356:   // setdelay
+        case 399:   // direction
+    }
 }
 
-void cli_move(){
-
+void cli_move(int steps){
+    steps_to_take = steps;
+    steps_taken = 0;
 }
 
 void cli_scan(void){
-
+    printf("Unimplemented function until the camera gets hooked up.\n\r", );
 }
 
 void cli_direction(void){
+    if(userCommand[10] == 'l' || userCommand = 'L'){
+        directionpin = 1;
+    } else if(userCommand[10] == 'r' || userCommand[10] == 'R'){
+        directionpin = 0;
+    } else {
+        badFormatError();
+    }
 
+    printf("Direction is %i \n\r", directionpin);
 }
 
 void cli_setdelay(void){
-
+    step_delay = parseStringToInt(userCommand, 9);
 }
 
 void cli_manual(void){
+    printf("\n\rManual mode active. Move slider manually, hit any key to exit this mode. \r\n");
+    manualpin = 1;
+    while(!waitForKey());
 
+    manualpin = 0;
 }
 
 void cli_gohome(void){
@@ -268,7 +369,11 @@ void doInput(void){
 }
 
 void doBackspace(void){
-
+    if(userCommandPos > 0){
+        userCommand[userCommandPos] = 127;
+        --userCommandPos;
+        printf("\b \b");
+    }
 }
 
 void setDefaultPinState(void){
