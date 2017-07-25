@@ -1,0 +1,1 @@
+ dist/NewConfiguration/production/doprnt.d  dist/NewConfiguration/production/doprnt.p1:  /opt/microchip/xc8/v1.42/sources/common/doprnt.c
