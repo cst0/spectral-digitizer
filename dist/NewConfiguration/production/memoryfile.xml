@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <executable name="dist/NewConfiguration/production/pic18_c_template_3.X.production.hex">
+    <memory name="program">
+      <units>bytes</units>
+      <length>16384</length>
+      <used>8791</used>
+      <free>7593</free>
+    </memory>
+    <memory name="data">
+      <units>bytes</units>
+      <length>768</length>
+      <used>211</used>
+      <free>557</free>
+    </memory>
+  </executable>
+</project>
