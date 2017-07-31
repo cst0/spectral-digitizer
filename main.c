@@ -97,8 +97,11 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 /**
     Global variables
 **/
-unsigned char userCommand[99];
+unsigned char userCommand[20];
 unsigned int  userCommandPos = 0;
+
+unsigned char *userCommandTotal[20];
+unsigned char userCommandTotalPos = 0;
 
 unsigned long long steps_to_take = 0;
 unsigned long long steps_taken   = 0;
@@ -157,6 +160,7 @@ void InitApp(void)
     ANSEL0bits.ANS4 = 0;
 }
 
+// TODO- finish this
 void variableDelay_us(int delay){
     switch(delay){
         case 0:
@@ -186,10 +190,12 @@ void variableDelay_us(int delay){
             ct_delay_us(8);
             break;
         case 9:
-            ct_delay_us(9);    
+            ct_delay_us(9);
             break;
     }
 }
+
+//TODO- Also finsish this
 /*
 void variableDelay_ms(int delay){
 
@@ -244,16 +250,31 @@ void echo(char echoChar){
 
 void buildCommand(unsigned char charIn){
     echo(charIn);
-    userCommand[userCommandPos] = charIn;
-    ++userCommandPos;
+    if(charIn != ' '){
+        userCommand[userCommandPos] = charIn;
+        ++userCommandPos;
+    } else {
+        ++userCommandTotalPos;
+        userCommandTotal[userCommandTotalPos] = userCommand;
+        clearUserCommand();
+    }
 }
 
 void clearUserCommand(void){
     unsigned int count = 0;
-    for(count = 0; count < 99; ++count){
+    for(count = 0; count <= 20; ++count){
         userCommand[count] = 0x0;
     }
     userCommandPos = 0;
+}
+
+void clearUserCommandTotal(void){
+    unsigned int count = 0;
+    clearUserCommand();
+
+    for(count = 0; count <= 20; ++count){
+        userCommand[count] = userCommand;
+    }
 }
 
 void putch(unsigned char data){
@@ -291,7 +312,8 @@ bool waitForKey(void){
 }
 
 void badFormatError(void){
-    printf("\n\rThe format of that command was not recognized.\n\rPlease try a different command, or use 'help' for help.\n\r");
+    printf("\n\rThe format of that command was not recognized.");
+    printf("\n\rPlease try a different command, or use 'help' for help.\n\r");
 }
 
 void setSteps(unsigned long long steps){
@@ -324,11 +346,30 @@ void cli_help(void){
     printf("   goend    \t Go to the position set as end.\n\r");
     printf("   setend   \t Set the current position as end.\n\r");
     printf("   clear    \t Clear the screen.\n\r");
+    printf("   license  \t Print license information. ")
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
     printf("More help, documentation, and license info can be found in the manual.\n\r");
     printf("Because of a lack of space on this device, the manual is online at\n\r");
     printf("cthierauf.com/digitizer-manual\n\r");
+}
+
+void cli_license(void){
+    printf("Spectral Digitizer: Code for the spectral digitzer project\n\r");
+    printf("Copyright (C) 2017  Chris Thierauf <chris@cthierauf.com>\n\r");
+    printf("\n\r");
+    printf("This program is free software: you can redistribute it and/or modify\n\r");
+    printf("it under the terms of the GNU General Public License as published by\n\r");
+    printf("the Free Software Foundation, either version 3 of the License, or\n\r");
+    printf("(at your option) any later version.\n\r");
+    printf("\n\r");
+    printf("This program is distributed in the hope that it will be useful,\n\r");
+    printf("but WITHOUT ANY WARRANTY; without even the implied warranty of\n\r");
+    printf("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\r");
+    printf("GNU General Public License for more details.\n\r");
+    printf("\n\r");
+    printf("You should have received a copy of the GNU General Public License\n\r");
+    printf("along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\r");
 }
 
 void cli_helpCommand(void){
@@ -469,7 +510,7 @@ void cli_gohome(void){
     if(steps_from_home > 0){
         setSteps(steps_from_home);
     } else if(steps_from_home < 0){
-       // __delay_ms(10);
+       __delay_ms(10);
         directionpin = !directionpin;
         setSteps(steps_from_home * -1);
     }
@@ -483,7 +524,7 @@ void cli_goend(void){
     if(steps_from_end > 0){
         setSteps(steps_from_end);
     } else if(steps_from_end < 0){
-        //__delay_ms(10);
+        __delay_ms(10);
         directionpin = !directionpin;
         setSteps(steps_from_end * -1);
     }
@@ -511,7 +552,7 @@ void cli_halt(void){
 }
 
 void doInput(void){
-    switch (toNumber(userCommand)) {
+    switch (toNumber(userCommandTotal[0])) {
         case 43:    // goend
             cli_goend();
             break;
@@ -562,6 +603,7 @@ void doBackspace(void){
         userCommand[userCommandPos] = (unsigned char) 0x0;
         --userCommandPos;
         printf("\b \b");
+
     }
 }
 
@@ -570,6 +612,7 @@ void setDefaultPinState(void){
     directionpin = 0;
     stepperpulsepin = 0;
     manualpin = 0;
+
 }
 
 void handleUART(void){
@@ -581,7 +624,7 @@ void handleUART(void){
             if(userCommandPos){
                 printf("\n\r");
                 doInput();
-                clearUserCommand();
+                clearUserCommandTotal();
             }
             printPrompt();
 
@@ -611,11 +654,11 @@ unsigned long long getPosition(void){
 void main(void){
     InitApp();
 
-   // __delay_ms(10);
+   __delay_ms(10);
 
     setDefaultPinState();
     clearQuadRegister();
-    clearUserCommand();
+    clearUserCommandTotal();
 
     cli_clear();
     startmsg();
