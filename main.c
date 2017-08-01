@@ -24,7 +24,7 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 #include "stdbool.h"        // Booleans
 #include "stdint.h"         // Gives the uint8_t stuff
 #include "string.h"         // Strings
-#include "htc.h"            // Gives access to delays (?))
+#include "htc.h"            // Gives access to delays (?)
 
 // Setup bits
 // PIC18F2431 Configuration Bit Settings
@@ -248,18 +248,6 @@ void echo(char echoChar){
     TXREG = echoChar;
 }
 
-void buildCommand(unsigned char charIn){
-    echo(charIn);
-    if(charIn != ' '){
-        userCommand[userCommandPos] = charIn;
-        ++userCommandPos;
-    } else {
-        ++userCommandTotalPos;
-        userCommandTotal[userCommandTotalPos] = userCommand;
-        clearUserCommand();
-    }
-}
-
 void clearUserCommand(void){
     unsigned int count = 0;
     for(count = 0; count <= 20; ++count){
@@ -274,6 +262,19 @@ void clearUserCommandTotal(void){
 
     for(count = 0; count <= 20; ++count){
         userCommand[count] = userCommand;
+    }
+    userCommandTotalPos = 0;
+}
+
+void buildCommand(unsigned char charIn){
+    echo(charIn);
+    if(charIn != ' '){
+        userCommand[userCommandPos] = charIn;
+        ++userCommandPos;
+    } else {
+        ++userCommandTotalPos;
+        userCommandTotal[userCommandTotalPos] = userCommand;
+        clearUserCommand();
     }
 }
 
@@ -346,7 +347,7 @@ void cli_help(void){
     printf("   goend    \t Go to the position set as end.\n\r");
     printf("   setend   \t Set the current position as end.\n\r");
     printf("   clear    \t Clear the screen.\n\r");
-    printf("   license  \t Print license information. ")
+    printf("   license  \t Print license information. ");
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
     printf("More help, documentation, and license info can be found in the manual.\n\r");
@@ -373,18 +374,11 @@ void cli_license(void){
 }
 
 void cli_helpCommand(void){
-    unsigned char searchArray[20];
-    unsigned char count;
-
-    for(count = 0; count < 20; ++count){
-        searchArray[count] = userCommand[count+5];
-    }
-
     printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r", version);
 
     // The different commands are simplified into numbers so that they can be
     // placed into a switch statement.
-    switch (toNumber(searchArray)) {
+    switch (toNumber(userCommandTotal[1])) {
         case 43:    // goend
             printf("Usage: goend\n\r");
             printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
@@ -438,17 +432,17 @@ void cli_helpCommand(void){
 }
 
 void cli_move(void){
-    if(userCommand[5] == 'l' || userCommand[5] == 'L'){
+    if(toNumber(userCommandTotal[1] == /*TODO- find what this value should be*/)){
         directionpin = 1;
         setMovement(parseStringToInt(userCommand, 10));
         printf("Starting movement in left direction.\r\n");
 
-    } else if(userCommand[5] == 'r' || userCommand[5] == 'R'){
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 0;
         setMovement(parseStringToInt(userCommand, 11));
         printf("Starting movement in the right direction.\r\n");
 
-    }else if((userCommand[5] >= 0x30) && (userCommand[5] <= 0x39)){ // Checking if the input after "move " is a number
+    }else if(toNumber(userCommandTotal[1] == /*TODO*/)){ // Checking if the input after "move " is a number
         setMovement(parseStringToInt(userCommand, 5));
         printf("Starting movement in the default direction. \r\n");
 
@@ -458,17 +452,17 @@ void cli_move(void){
 }
 
 void cli_movecm(void){
-    if(userCommand[7] == 'l' || userCommand[7] == 'L'){
+    if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 1;
         setMovement(parseStringToInt(userCommand, 12) * pulses_in_cm );
         printf("Starting movement in left direction.\r\n");
 
-    } else if(userCommand[7] == 'r' || userCommand[7] == 'R'){
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 0;
         setMovement(parseStringToInt(userCommand, 13) * pulses_in_cm );
         printf("Starting movement in the right direction.\r\n");
 
-    } else if((userCommand[7] >= 48) && (userCommand[7] <= 57)){ // Checking if the input after "move " is a number
+    } else if((toNumber(userCommandTotal[1] == /*TODO*/))){ // Checking if the input after "move " is a number
         setMovement(parseStringToInt(userCommand, 7) * pulses_in_cm );
         printf("Starting movement in the default direction. \r\n");
 
@@ -483,15 +477,15 @@ void cli_scan(void){
 }
 
 void cli_direction(void){
-    if(userCommand[10] == 'l' || userCommand[10] == 'L'){
+    if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 1;
-    } else if(userCommand[10] == 'r' || userCommand[10] == 'R'){
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 0;
     } else {
         badFormatError();
     }
 
-    printf("Direction is %i\n\r", directionpin);
+    printf("Direction pin is %i\n\r", directionpin);
 }
 
 void cli_setdelay(void){
@@ -510,7 +504,7 @@ void cli_gohome(void){
     if(steps_from_home > 0){
         setSteps(steps_from_home);
     } else if(steps_from_home < 0){
-       __delay_ms(10);
+       ct_delay_ms(10);
         directionpin = !directionpin;
         setSteps(steps_from_home * -1);
     }
@@ -524,7 +518,7 @@ void cli_goend(void){
     if(steps_from_end > 0){
         setSteps(steps_from_end);
     } else if(steps_from_end < 0){
-        __delay_ms(10);
+        ct_delay_ms(10);
         directionpin = !directionpin;
         setSteps(steps_from_end * -1);
     }
@@ -654,7 +648,7 @@ unsigned long long getPosition(void){
 void main(void){
     InitApp();
 
-   __delay_ms(10);
+    ct_delay_ms(100);
 
     setDefaultPinState();
     clearQuadRegister();
