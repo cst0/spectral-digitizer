@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-char version[] = {"v2.0 (beta) 24-July-2017"};
+char version[] = {"v2.3 (beta) 2-August-2017"};
 
 // Includes
 #include <xc.h>             // For hardware-specific stuff
@@ -24,13 +24,13 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 #include "stdbool.h"        // Booleans
 #include "stdint.h"         // Gives the uint8_t stuff
 #include "string.h"         // Strings
-#include "htc.h"            // Gives access to delays (?)
+#include "htc.h"            // Gives access to delays (?) TODO- remove this and see what happens
 
 // Setup bits
 // PIC18F2431 Configuration Bit Settings
 // 'C' source line config statements
 // CONFIG1H
-#pragma config OSC = IRC      // Oscillator Selection bits (Internal oscillator block, port function on RA6 and port function on RA7)
+#pragma config OSC = IRC        // Oscillator Selection bits (Internal oscillator block, port function on RA6 and port function on RA7)
 #pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
 #pragma config IESO = ON        // Internal External Oscillator Switchover bit (Internal External Switchover mode enabled)
 // CONFIG2L
@@ -77,13 +77,14 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 #pragma config EBTRB = OFF      // Boot Block Table Read Protection bit (Boot Block (000000-0001FFh) not protected from table reads executed in other blocks)
 
 /* Pin definitions, for keeping things easier later */
-#define LEDpin          LATAbits.LATA0
-#define directionpin    LATBbits.LATB4
-#define stepperpulsepin LATBbits.LATB2
-#define manualpin       LATBbits.LATB3
+#define LEDpin          LATAbits.LATA0 // The pin that the LED can be found on
+#define directionpin    LATBbits.LATB4 // The pin that controls the stepper direction
+#define stepperpulsepin LATBbits.LATB2 // The pin that gives pulses to the stepper
+#define manualpin       LATBbits.LATB3 // The pin that controls the manual mode
 
 /* Defining the ratio of quadrature pulses to centimeters */
-#define pulses_in_cm 100
+#define quadPulses_in_cm 100 // Defined because it's set in the spec sheet
+int stepperPulses_in_cm 1;   // Variable so that it can be used in control loop
 
 /* Definition regarding clocks and timing */
 #define _XTAL_FREQ = 8000000
@@ -94,25 +95,31 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 #define ct_delay_ms(x) _delay((x)*(2))
 #define ct_delay_us(x) _delay((x)*(2000))
 
-/**
-    Global variables
-**/
-unsigned char userCommand[20];
-unsigned int  userCommandPos = 0;
+/*
+ * Global variables
+ */
+unsigned char userCommand[20];// The user's characters, as they're being typed
+unsigned int  userCommandPos = 0;// The position in the userCommand array
 
+/*
+ * userCommandTotal is a pointer to a character array, where each point in the
+ * array is used to store a different part of the command. [0] holds the command,
+ * [1] holds the first argument, and so on.
+ */
 unsigned char *userCommandTotal[20];
 unsigned char userCommandTotalPos = 0;
 
-unsigned long long steps_to_take = 0;
-unsigned long long steps_taken   = 0;
-unsigned int step_delay = 10;
+unsigned long long steps_to_take = 0;   // The number of steps that need to be taken
+unsigned long long steps_taken   = 0;   // The number of steps that have actually been taken
+unsigned int step_delay = 10;           // Desired minimum delay between pulses- here while testing only
 
-unsigned long long pulses_to_get = 0;
+unsigned long long pulses_to_get = 0;   // Number of pulses expected to recieve (quadrature)
 
-long long steps_from_home = 0;
+long long steps_from_home = 0;          // The number of steps away from the home position
 
-long long steps_from_end = 0;
+long long steps_from_end = 0;           // The number of steps away from the end position
 
+// Blink modes. TODO- Consider removing?
 unsigned int blinks_every_x_cycles = 100;
 unsigned int blinks_taken = 0;
 unsigned int blinks_delay = 10;
@@ -121,6 +128,7 @@ unsigned int blinks_mode = 0;
 // InitApp: Sets up the pins.
 void InitApp(void)
 {
+    // TODO- go through and finally label all of these.
     // UART stuff
     RCSTAbits.SPEN = 1;
     TRISCbits.RC6 = 1;
@@ -195,7 +203,7 @@ void variableDelay_us(int delay){
     }
 }
 
-//TODO- Also finsish this
+//TODO- Also finish this
 /*
 void variableDelay_ms(int delay){
 
@@ -268,13 +276,20 @@ void clearUserCommandTotal(void){
 
 void buildCommand(unsigned char charIn){
     echo(charIn);
-    if(charIn != ' '){
-        userCommand[userCommandPos] = charIn;
-        ++userCommandPos;
-    } else {
-        ++userCommandTotalPos;
+
+    if(charIn == ' '){
+        if(userCommandTotal[userCommandTotalPos] != '\0'){
+            ++userCommandTotalPos;
+
+        }
+
         userCommandTotal[userCommandTotalPos] = userCommand;
         clearUserCommand();
+
+    } else {
+        userCommand[userCommandPos] = charIn;
+        ++userCommandPos;
+
     }
 }
 
@@ -373,12 +388,25 @@ void cli_license(void){
     printf("along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\r");
 }
 
+#define goend       43
+#define move        50
+#define help        53
+#define setend      76
+#define halt        86
+#define gohome      93
+#define scan        98
+#define sethome     140
+#define manual      221
+#define status      251
+#define setdelay    356
+#define direction   399
+
 void cli_helpCommand(void){
     printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r", version);
 
     // The different commands are simplified into numbers so that they can be
     // placed into a switch statement.
-    switch (toNumber(userCommandTotal[1])) {
+    switch (toNumber(userCommandTotal[0])) {
         case 43:    // goend
             printf("Usage: goend\n\r");
             printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
@@ -431,45 +459,45 @@ void cli_helpCommand(void){
     }
 }
 
+#define toNumberLeft 53
+#define toNumberRight 87
+
 void cli_move(void){
-    if(toNumber(userCommandTotal[1] == /*TODO- find what this value should be*/)){
+    if(toNumber(userCommandTotal[1] == toNumberLeft)){
         directionpin = 1;
-        setMovement(parseStringToInt(userCommand, 10));
         printf("Starting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
+    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
         directionpin = 0;
         setMovement(parseStringToInt(userCommand, 11));
         printf("Starting movement in the right direction.\r\n");
 
-    }else if(toNumber(userCommandTotal[1] == /*TODO*/)){ // Checking if the input after "move " is a number
-        setMovement(parseStringToInt(userCommand, 5));
-        printf("Starting movement in the default direction. \r\n");
-
     } else {
         badFormatError();
     }
+
+    //TODO- add checks to make sure the parser is getting a number
+    setMovement(parseStringToInt(userCommandTotal[2], 0));
+
 }
 
 void cli_movecm(void){
-    if(toNumber(userCommandTotal[1] == /*TODO*/)){
+    if(toNumber(userCommandTotal[1] == toNumberLeft)){
         directionpin = 1;
-        setMovement(parseStringToInt(userCommand, 12) * pulses_in_cm );
-        printf("Starting movement in left direction.\r\n");
+        printf("Setting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
+    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
         directionpin = 0;
-        setMovement(parseStringToInt(userCommand, 13) * pulses_in_cm );
-        printf("Starting movement in the right direction.\r\n");
-
-    } else if((toNumber(userCommandTotal[1] == /*TODO*/))){ // Checking if the input after "move " is a number
-        setMovement(parseStringToInt(userCommand, 7) * pulses_in_cm );
-        printf("Starting movement in the default direction. \r\n");
+        printf("Setting movement in the right direction.\r\n");
 
     } else {
         badFormatError();
 
     }
+
+    //TODO- add checks to make sure the parser is getting a number
+    setMovementCM(parseStringToInt(userCommandTotal[2], 0));
+
 }
 
 void cli_scan(void){
@@ -477,15 +505,17 @@ void cli_scan(void){
 }
 
 void cli_direction(void){
-    if(toNumber(userCommandTotal[1] == /*TODO*/)){
+    if(toNumber(userCommandTotal[1] == toNumberLeft)){
         directionpin = 1;
-    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
+    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
         directionpin = 0;
     } else {
         badFormatError();
     }
 
-    printf("Direction pin is %i\n\r", directionpin);
+    printf("Direction pin is %i", directionpin);
+    (directionpin) ? printf("left"): printf("right");
+
 }
 
 void cli_setdelay(void){
@@ -504,10 +534,10 @@ void cli_gohome(void){
     if(steps_from_home > 0){
         setSteps(steps_from_home);
     } else if(steps_from_home < 0){
-       ct_delay_ms(10);
+        ct_delay_ms(10);
         directionpin = !directionpin;
         setSteps(steps_from_home * -1);
-    }
+    } // If it isn't greater than, or less than 0, it is 0 and nothing needs to be done
 }
 
 void cli_sethome(void){
@@ -645,6 +675,10 @@ unsigned long long getPosition(void){
     return (POSCNTH *256) + POSCNTL;
 }
 
+void handlecm(void){
+    // Put some form of PID here?
+}
+
 void main(void){
     InitApp();
 
@@ -661,5 +695,6 @@ void main(void){
         handleUART();
         if(shouldMove()){ doMoves(); }
         doBlinks();
+        handlecm();
     }
 }
