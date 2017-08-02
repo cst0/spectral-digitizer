@@ -1,0 +1,606 @@
+[p LITE_MODE AUTOSTATIC LFSROK EMI_WORD ]
+[d version 1.1 ]
+[d edition pro ]
+[d chip 18F2431 ]
+[d frameptr 4065 ]
+"464 /opt/microchip/xc8/v1.42/sources/common/doprnt.c
+[v _printf printf `(i  1 e 2 0 ]
+"62 /opt/microchip/xc8/v1.42/sources/common/float.c
+[v ___ftpack __ftpack `(f  1 e 3 0 ]
+"86 /opt/microchip/xc8/v1.42/sources/common/ftadd.c
+[v ___ftadd __ftadd `(f  1 e 3 0 ]
+"54 /opt/microchip/xc8/v1.42/sources/common/ftdiv.c
+[v ___ftdiv __ftdiv `(f  1 e 3 0 ]
+"62 /opt/microchip/xc8/v1.42/sources/common/ftmul.c
+[v ___ftmul __ftmul `(f  1 e 3 0 ]
+"20 /opt/microchip/xc8/v1.42/sources/common/ftsub.c
+[v ___ftsub __ftsub `(f  1 e 3 0 ]
+"8 /opt/microchip/xc8/v1.42/sources/common/lwdiv.c
+[v ___lwdiv __lwdiv `(ui  1 e 2 0 ]
+"8 /opt/microchip/xc8/v1.42/sources/common/lwmod.c
+[v ___lwmod __lwmod `(ui  1 e 2 0 ]
+"10 /opt/microchip/xc8/v1.42/sources/common/sprcadd.c
+[v ___fladd __fladd `(d  1 e 3 0 ]
+"245
+[v ___flsub __flsub `(d  1 e 3 0 ]
+"11 /opt/microchip/xc8/v1.42/sources/common/sprcdiv.c
+[v ___fldiv __fldiv `(d  1 e 3 0 ]
+"8 /opt/microchip/xc8/v1.42/sources/common/sprcmul.c
+[v ___flmul __flmul `(d  1 e 3 0 ]
+"15 /opt/microchip/xc8/v1.42/sources/common/Umul32.c
+[v ___lmul __lmul `(ul  1 e 4 0 ]
+"102 /home/chris/MPLABXProjects/pic18_c_template_3.X/main.c
+[v _InitApp InitApp `(v  1 e 1 0 ]
+"138
+[v _variableDelay_mu variableDelay_mu `(v  1 e 1 0 ]
+"145
+[v _doBlinks doBlinks `(v  1 e 1 0 ]
+"165
+[v _doMoves doMoves `(v  1 e 1 0 ]
+"183
+[v _shouldMove shouldMove `(uc  1 e 1 0 ]
+"187
+[v _ct_strncmp ct_strncmp `(uc  1 e 1 0 ]
+"201
+[v _parseStringToInt parseStringToInt `(ul  1 e 4 0 ]
+"218
+[v _echo echo `(v  1 e 1 0 ]
+"223
+[v _buildCommand buildCommand `(v  1 e 1 0 ]
+"242
+[v _clearUserCommand clearUserCommand `(v  1 e 1 0 ]
+"250
+[v _putch putch `(v  1 e 1 0 ]
+"266
+[v _printPrompt printPrompt `(v  1 e 1 0 ]
+"270
+[v _startmsg startmsg `(v  1 e 1 0 ]
+"276
+[v _waitForKey waitForKey `(uc  1 e 1 0 ]
+"284
+[v _error error `(v  1 e 1 0 ]
+"295
+[v _cli_clear cli_clear `(v  1 e 1 0 ]
+"303
+[v _cli_help cli_help `(v  1 e 1 0 ]
+"328
+[v _cli_helpCommand cli_helpCommand `(v  1 e 1 0 ]
+"399
+[v _cli_move cli_move `(v  1 e 1 0 ]
+"404
+[v _cli_movedir cli_movedir `(v  1 e 1 0 ]
+"430
+[v _cli_direction cli_direction `(v  1 e 1 0 ]
+"444
+[v _cli_setdelay cli_setdelay `(v  1 e 1 0 ]
+"448
+[v _cli_manual cli_manual `(v  1 e 1 0 ]
+"456
+[v _cli_gohome cli_gohome `(v  1 e 1 0 ]
+"464
+[v _cli_sethome cli_sethome `(v  1 e 1 0 ]
+"468
+[v _cli_goend cli_goend `(v  1 e 1 0 ]
+"472
+[v _cli_setend cli_setend `(v  1 e 1 0 ]
+"480
+[v _cli_status cli_status `(v  1 e 1 0 ]
+"487
+[v _cli_halt cli_halt `(v  1 e 1 0 ]
+"498
+[v _doInput doInput `(v  1 e 1 0 ]
+"636
+[v _doBackspace doBackspace `(v  1 e 1 0 ]
+"644
+[v _ConfigureOscillator ConfigureOscillator `(v  1 e 1 0 ]
+"648
+[v _main main `(v  1 e 1 0 ]
+[s S338 . 1 `uc 1 LATA0 1 0 :1:0 
+`uc 1 LATA1 1 0 :1:1 
+`uc 1 LATA2 1 0 :1:2 
+`uc 1 LATA3 1 0 :1:3 
+`uc 1 LATA4 1 0 :1:4 
+`uc 1 . 1 0 :1:5 
+`uc 1 LATA6 1 0 :1:6 
+`uc 1 LATA7 1 0 :1:7 
+]
+"1616 /opt/microchip/xc8/v1.42/include/pic18f2431.h
+[s S347 . 1 `uc 1 LA0 1 0 :1:0 
+`uc 1 LA1 1 0 :1:1 
+`uc 1 LA2 1 0 :1:2 
+`uc 1 LA3 1 0 :1:3 
+`uc 1 LA4 1 0 :1:4 
+`uc 1 . 1 0 :1:5 
+`uc 1 LA6 1 0 :1:6 
+`uc 1 LA7 1 0 :1:7 
+]
+[u S356 . 1 `S338 1 . 1 0 `S347 1 . 1 0 ]
+[v _LATAbits LATAbits `VES356  1 e 1 @3977 ]
+[s S378 . 1 `uc 1 LATB0 1 0 :1:0 
+`uc 1 LATB1 1 0 :1:1 
+`uc 1 LATB2 1 0 :1:2 
+`uc 1 LATB3 1 0 :1:3 
+`uc 1 LATB4 1 0 :1:4 
+`uc 1 LATB5 1 0 :1:5 
+`uc 1 LATB6 1 0 :1:6 
+`uc 1 LATB7 1 0 :1:7 
+]
+"1718
+[s S387 . 1 `uc 1 LB0 1 0 :1:0 
+`uc 1 LB1 1 0 :1:1 
+`uc 1 LB2 1 0 :1:2 
+`uc 1 LB3 1 0 :1:3 
+`uc 1 LB4 1 0 :1:4 
+`uc 1 LB5 1 0 :1:5 
+`uc 1 LB6 1 0 :1:6 
+`uc 1 LB7 1 0 :1:7 
+]
+[u S396 . 1 `S378 1 . 1 0 `S387 1 . 1 0 ]
+[v _LATBbits LATBbits `VES396  1 e 1 @3978 ]
+[s S252 . 1 `uc 1 TRISA0 1 0 :1:0 
+`uc 1 TRISA1 1 0 :1:1 
+`uc 1 TRISA2 1 0 :1:2 
+`uc 1 TRISA3 1 0 :1:3 
+`uc 1 TRISA4 1 0 :1:4 
+`uc 1 . 1 0 :1:5 
+`uc 1 TRISA6 1 0 :1:6 
+`uc 1 TRISA7 1 0 :1:7 
+]
+"1968
+[s S261 . 1 `uc 1 RA0 1 0 :1:0 
+`uc 1 RA1 1 0 :1:1 
+`uc 1 RA2 1 0 :1:2 
+`uc 1 RA3 1 0 :1:3 
+`uc 1 RA4 1 0 :1:4 
+`uc 1 . 1 0 :1:5 
+`uc 1 RA6 1 0 :1:6 
+`uc 1 RA7 1 0 :1:7 
+]
+[u S270 . 1 `S252 1 . 1 0 `S261 1 . 1 0 ]
+[v _TRISAbits TRISAbits `VES270  1 e 1 @3986 ]
+[s S292 . 1 `uc 1 TRISB0 1 0 :1:0 
+`uc 1 TRISB1 1 0 :1:1 
+`uc 1 TRISB2 1 0 :1:2 
+`uc 1 TRISB3 1 0 :1:3 
+`uc 1 TRISB4 1 0 :1:4 
+`uc 1 TRISB5 1 0 :1:5 
+`uc 1 TRISB6 1 0 :1:6 
+`uc 1 TRISB7 1 0 :1:7 
+]
+"2170
+[s S301 . 1 `uc 1 RB0 1 0 :1:0 
+`uc 1 RB1 1 0 :1:1 
+`uc 1 RB2 1 0 :1:2 
+`uc 1 RB3 1 0 :1:3 
+`uc 1 RB4 1 0 :1:4 
+`uc 1 RB5 1 0 :1:5 
+`uc 1 RB6 1 0 :1:6 
+`uc 1 RB7 1 0 :1:7 
+]
+[u S310 . 1 `S292 1 . 1 0 `S301 1 . 1 0 ]
+[v _TRISBbits TRISBbits `VES310  1 e 1 @3987 ]
+[s S75 . 1 `uc 1 TRISC0 1 0 :1:0 
+`uc 1 TRISC1 1 0 :1:1 
+`uc 1 TRISC2 1 0 :1:2 
+`uc 1 TRISC3 1 0 :1:3 
+`uc 1 TRISC4 1 0 :1:4 
+`uc 1 TRISC5 1 0 :1:5 
+`uc 1 TRISC6 1 0 :1:6 
+`uc 1 TRISC7 1 0 :1:7 
+]
+"2392
+[s S84 . 1 `uc 1 RC0 1 0 :1:0 
+`uc 1 RC1 1 0 :1:1 
+`uc 1 RC2 1 0 :1:2 
+`uc 1 RC3 1 0 :1:3 
+`uc 1 RC4 1 0 :1:4 
+`uc 1 RC5 1 0 :1:5 
+`uc 1 RC6 1 0 :1:6 
+`uc 1 RC7 1 0 :1:7 
+]
+[u S93 . 1 `S75 1 . 1 0 `S84 1 . 1 0 ]
+[v _TRISCbits TRISCbits `VES93  1 e 1 @3988 ]
+[s S419 . 1 `uc 1 TMR1IF 1 0 :1:0 
+`uc 1 TMR2IF 1 0 :1:1 
+`uc 1 CCP1IF 1 0 :1:2 
+`uc 1 SSPIF 1 0 :1:3 
+`uc 1 TXIF 1 0 :1:4 
+`uc 1 RCIF 1 0 :1:5 
+`uc 1 ADIF 1 0 :1:6 
+]
+"2955
+[s S427 . 1 `uc 1 . 1 0 :4:0 
+`uc 1 TBIF 1 0 :1:4 
+]
+[s S430 . 1 `uc 1 . 1 0 :4:0 
+`uc 1 TX1IF 1 0 :1:4 
+`uc 1 RC1IF 1 0 :1:5 
+]
+[u S434 . 1 `S419 1 . 1 0 `S427 1 . 1 0 `S430 1 . 1 0 ]
+[v _PIR1bits PIR1bits `VES434  1 e 1 @3998 ]
+[s S167 . 1 `uc 1 ABDEN 1 0 :1:0 
+`uc 1 WUE 1 0 :1:1 
+`uc 1 . 1 0 :1:2 
+`uc 1 BRG16 1 0 :1:3 
+`uc 1 TXCKP 1 0 :1:4 
+`uc 1 RXDTP 1 0 :1:5 
+`uc 1 RCIDL 1 0 :1:6 
+`uc 1 ABDOVF 1 0 :1:7 
+]
+"3548
+[s S176 . 1 `uc 1 . 1 0 :4:0 
+`uc 1 SCKP 1 0 :1:4 
+`uc 1 . 1 0 :1:5 
+`uc 1 RCMT 1 0 :1:6 
+]
+[s S181 . 1 `uc 1 . 1 0 :5:0 
+`uc 1 RXCKP 1 0 :1:5 
+]
+[s S184 . 1 `uc 1 . 1 0 :1:0 
+`uc 1 W4E 1 0 :1:1 
+]
+[u S187 . 1 `S167 1 . 1 0 `S176 1 . 1 0 `S181 1 . 1 0 `S184 1 . 1 0 ]
+[v _BAUDCONbits BAUDCONbits `VES187  1 e 1 @4010 ]
+[s S21 . 1 `uc 1 RX9D 1 0 :1:0 
+`uc 1 OERR 1 0 :1:1 
+`uc 1 FERR 1 0 :1:2 
+`uc 1 ADDEN 1 0 :1:3 
+`uc 1 CREN 1 0 :1:4 
+`uc 1 SREN 1 0 :1:5 
+`uc 1 RX9 1 0 :1:6 
+`uc 1 SPEN 1 0 :1:7 
+]
+"3733
+[s S30 . 1 `uc 1 . 1 0 :3:0 
+`uc 1 ADEN 1 0 :1:3 
+]
+[s S33 . 1 `uc 1 . 1 0 :5:0 
+`uc 1 SRENA 1 0 :1:5 
+]
+[s S36 . 1 `uc 1 . 1 0 :6:0 
+`uc 1 RC8_9 1 0 :1:6 
+]
+[s S39 . 1 `uc 1 . 1 0 :6:0 
+`uc 1 RC9 1 0 :1:6 
+]
+[s S42 . 1 `uc 1 RCD8 1 0 :1:0 
+]
+[u S44 . 1 `S21 1 . 1 0 `S30 1 . 1 0 `S33 1 . 1 0 `S36 1 . 1 0 `S39 1 . 1 0 `S42 1 . 1 0 ]
+[v _RCSTAbits RCSTAbits `VES44  1 e 1 @4011 ]
+[s S115 . 1 `uc 1 TX9D 1 0 :1:0 
+`uc 1 TRMT 1 0 :1:1 
+`uc 1 BRGH 1 0 :1:2 
+`uc 1 SENDB 1 0 :1:3 
+`uc 1 SYNC 1 0 :1:4 
+`uc 1 TXEN 1 0 :1:5 
+`uc 1 TX9 1 0 :1:6 
+`uc 1 CSRC 1 0 :1:7 
+]
+"3941
+[s S124 . 1 `uc 1 TX9D1 1 0 :1:0 
+`uc 1 TRMT1 1 0 :1:1 
+`uc 1 BRGH1 1 0 :1:2 
+`uc 1 SENDB1 1 0 :1:3 
+`uc 1 SYNC1 1 0 :1:4 
+`uc 1 TXEN1 1 0 :1:5 
+`uc 1 TX91 1 0 :1:6 
+`uc 1 CSRC1 1 0 :1:7 
+]
+[s S133 . 1 `uc 1 . 1 0 :6:0 
+`uc 1 TX8_9 1 0 :1:6 
+]
+[s S136 . 1 `uc 1 TXD8 1 0 :1:0 
+]
+[u S138 . 1 `S115 1 . 1 0 `S124 1 . 1 0 `S133 1 . 1 0 `S136 1 . 1 0 ]
+[v _TXSTAbits TXSTAbits `VES138  1 e 1 @4012 ]
+"4158
+[v _TXREG TXREG `VEuc  1 e 1 @4013 ]
+"4170
+[v _RCREG RCREG `VEuc  1 e 1 @4014 ]
+"4182
+[v _SPBRG SPBRG `VEuc  1 e 1 @4015 ]
+"4194
+[v _SPBRGH SPBRGH `VEuc  1 e 1 @4016 ]
+[s S215 . 1 `uc 1 SCS 1 0 :2:0 
+`uc 1 IOFS 1 0 :1:2 
+`uc 1 OSTS 1 0 :1:3 
+`uc 1 IRCF 1 0 :3:4 
+`uc 1 IDLEN 1 0 :1:7 
+]
+"6009
+[s S221 . 1 `uc 1 SCS0 1 0 :1:0 
+`uc 1 SCS1 1 0 :1:1 
+`uc 1 . 1 0 :2:2 
+`uc 1 IRCF0 1 0 :1:4 
+`uc 1 IRCF1 1 0 :1:5 
+`uc 1 IRCF2 1 0 :1:6 
+]
+[s S228 . 1 `uc 1 . 1 0 :2:0 
+`uc 1 FLTS 1 0 :1:2 
+]
+[u S231 . 1 `S215 1 . 1 0 `S221 1 . 1 0 `S228 1 . 1 0 ]
+[v _OSCCONbits OSCCONbits `VES231  1 e 1 @4051 ]
+"354 /opt/microchip/xc8/v1.42/sources/common/doprnt.c
+[v _dpowers dpowers `C[5]ui  1 s 10 dpowers ]
+"78 /home/chris/MPLABXProjects/pic18_c_template_3.X/main.c
+[v _VERSION VERSION `[24]uc  1 e 24 0 ]
+"84
+[v _userCommand userCommand `[99]uc  1 e 99 0 ]
+"85
+[v _userCommandPos userCommandPos `i  1 e 2 0 ]
+"87
+[v _steps_to_take steps_to_take `ul  1 e 4 0 ]
+"88
+[v _steps_taken steps_taken `ul  1 e 4 0 ]
+"89
+[v _step_delay step_delay `ui  1 e 2 0 ]
+"91
+[v _steps_from_home steps_from_home `ul  1 e 4 0 ]
+"92
+[v _steps_from_home_direction steps_from_home_direction `uc  1 e 1 0 ]
+"97
+[v _blinks_every_x_cycles blinks_every_x_cycles `ui  1 e 2 0 ]
+"98
+[v _blinks_taken blinks_taken `ui  1 e 2 0 ]
+"100
+[v _blinks_mode blinks_mode `ui  1 e 2 0 ]
+"648
+[v _main main `(v  1 e 1 0 ]
+{
+"662
+[v main@holderChar holderChar `uc  1 a 1 57 ]
+"685
+} 0
+"270
+[v _startmsg startmsg `(v  1 e 1 0 ]
+{
+"274
+} 0
+"266
+[v _printPrompt printPrompt `(v  1 e 1 0 ]
+{
+"268
+} 0
+"183
+[v _shouldMove shouldMove `(uc  1 e 1 0 ]
+{
+"185
+} 0
+"165
+[v _doMoves doMoves `(v  1 e 1 0 ]
+{
+"181
+} 0
+"138
+[v _variableDelay_mu variableDelay_mu `(v  1 e 1 0 ]
+{
+"139
+[v variableDelay_mu@count count `ui  1 a 2 2 ]
+"138
+[v variableDelay_mu@mu mu `ui  1 p 2 0 ]
+"143
+} 0
+"498
+[v _doInput doInput `(v  1 e 1 0 ]
+{
+"635
+} 0
+"480
+[v _cli_status cli_status `(v  1 e 1 0 ]
+{
+"485
+} 0
+"464
+[v _cli_sethome cli_sethome `(v  1 e 1 0 ]
+{
+"466
+} 0
+"472
+[v _cli_setend cli_setend `(v  1 e 1 0 ]
+{
+"474
+} 0
+"444
+[v _cli_setdelay cli_setdelay `(v  1 e 1 0 ]
+{
+"446
+} 0
+"201
+[v _parseStringToInt parseStringToInt `(ul  1 e 4 0 ]
+{
+"202
+[v parseStringToInt@returnInt returnInt `ul  1 a 4 22 ]
+"203
+[v parseStringToInt@storeInt storeInt `i  1 a 2 26 ]
+"204
+[v parseStringToInt@count count `ui  1 a 2 20 ]
+"201
+[v parseStringToInt@toParse toParse `*.39uc  1 p 2 12 ]
+[v parseStringToInt@startPoint startPoint `i  1 p 2 14 ]
+"216
+} 0
+"15 /opt/microchip/xc8/v1.42/sources/common/Umul32.c
+[v ___lmul __lmul `(ul  1 e 4 0 ]
+{
+"17
+[v ___lmul@product product `ul  1 a 4 8 ]
+"15
+[v ___lmul@multiplier multiplier `ul  1 p 4 0 ]
+[v ___lmul@multiplicand multiplicand `ul  1 p 4 4 ]
+"129
+} 0
+"399 /home/chris/MPLABXProjects/pic18_c_template_3.X/main.c
+[v _cli_move cli_move `(v  1 e 1 0 ]
+{
+[v cli_move@steps steps `i  1 p 2 28 ]
+"402
+} 0
+"328
+[v _cli_helpCommand cli_helpCommand `(v  1 e 1 0 ]
+{
+"329
+[v cli_helpCommand@searchArray searchArray `[20]uc  1 a 20 34 ]
+"330
+[v cli_helpCommand@count count `ui  1 a 2 54 ]
+"396
+} 0
+"187
+[v _ct_strncmp ct_strncmp `(uc  1 e 1 0 ]
+{
+"190
+[v ct_strncmp@count count `ui  1 a 2 9 ]
+"187
+[v ct_strncmp@s1 s1 `*.25uc  1 p 2 0 ]
+[v ct_strncmp@s2 s2 `*.39uc  1 p 2 2 ]
+[v ct_strncmp@n n `ui  1 p 2 4 ]
+"197
+} 0
+"303
+[v _cli_help cli_help `(v  1 e 1 0 ]
+{
+"326
+} 0
+"487
+[v _cli_halt cli_halt `(v  1 e 1 0 ]
+{
+"496
+} 0
+"448
+[v _cli_manual cli_manual `(v  1 e 1 0 ]
+{
+"454
+} 0
+"276
+[v _waitForKey waitForKey `(uc  1 e 1 0 ]
+{
+"278
+[v waitForKey@disposable disposable `uc  1 a 1 0 ]
+"282
+} 0
+"456
+[v _cli_gohome cli_gohome `(v  1 e 1 0 ]
+{
+"462
+} 0
+"404
+[v _cli_movedir cli_movedir `(v  1 e 1 0 ]
+{
+[v cli_movedir@direction direction `i  1 p 2 28 ]
+[v cli_movedir@steps steps `ul  1 p 4 30 ]
+"408
+} 0
+"468
+[v _cli_goend cli_goend `(v  1 e 1 0 ]
+{
+"470
+} 0
+"430
+[v _cli_direction cli_direction `(v  1 e 1 0 ]
+{
+"442
+} 0
+"284
+[v _error error `(v  1 e 1 0 ]
+{
+[v error@errorCode errorCode `i  1 p 2 32 ]
+"293
+} 0
+"295
+[v _cli_clear cli_clear `(v  1 e 1 0 ]
+{
+"296
+[v cli_clear@count count `i  1 a 2 32 ]
+"301
+} 0
+"145
+[v _doBlinks doBlinks `(v  1 e 1 0 ]
+{
+"163
+} 0
+"636
+[v _doBackspace doBackspace `(v  1 e 1 0 ]
+{
+"643
+} 0
+"464 /opt/microchip/xc8/v1.42/sources/common/doprnt.c
+[v _printf printf `(i  1 e 2 0 ]
+{
+"528
+[v printf@val val `ui  1 a 2 29 ]
+"530
+[v printf@cp cp `*.35Cuc  1 a 2 27 ]
+"466
+[v printf@ap ap `[1]*.39v  1 a 2 25 ]
+"499
+[v printf@c c `c  1 a 1 31 ]
+"506
+[v printf@prec prec `c  1 a 1 24 ]
+"508
+[v printf@flag flag `uc  1 a 1 23 ]
+"464
+[v printf@f f `*.25Cuc  1 p 2 12 ]
+"1541
+} 0
+"250 /home/chris/MPLABXProjects/pic18_c_template_3.X/main.c
+[v _putch putch `(v  1 e 1 0 ]
+{
+[v putch@data data `uc  1 a 1 wreg ]
+[v putch@data data `uc  1 a 1 wreg ]
+[v putch@data data `uc  1 a 1 0 ]
+"254
+} 0
+"8 /opt/microchip/xc8/v1.42/sources/common/lwmod.c
+[v ___lwmod __lwmod `(ui  1 e 2 0 ]
+{
+"11
+[v ___lwmod@counter counter `uc  1 a 1 11 ]
+"8
+[v ___lwmod@dividend dividend `ui  1 p 2 7 ]
+[v ___lwmod@divisor divisor `ui  1 p 2 9 ]
+"26
+} 0
+"8 /opt/microchip/xc8/v1.42/sources/common/lwdiv.c
+[v ___lwdiv __lwdiv `(ui  1 e 2 0 ]
+{
+"11
+[v ___lwdiv@quotient quotient `ui  1 a 2 4 ]
+"12
+[v ___lwdiv@counter counter `uc  1 a 1 6 ]
+"8
+[v ___lwdiv@dividend dividend `ui  1 p 2 0 ]
+[v ___lwdiv@divisor divisor `ui  1 p 2 2 ]
+"31
+} 0
+"242 /home/chris/MPLABXProjects/pic18_c_template_3.X/main.c
+[v _clearUserCommand clearUserCommand `(v  1 e 1 0 ]
+{
+"243
+[v clearUserCommand@count count `ui  1 a 2 0 ]
+"248
+} 0
+"223
+[v _buildCommand buildCommand `(v  1 e 1 0 ]
+{
+[v buildCommand@charIn charIn `uc  1 a 1 wreg ]
+[v buildCommand@charIn charIn `uc  1 a 1 wreg ]
+[v buildCommand@charIn charIn `uc  1 a 1 1 ]
+"232
+} 0
+"218
+[v _echo echo `(v  1 e 1 0 ]
+{
+[v echo@echoChar echoChar `uc  1 a 1 wreg ]
+[v echo@echoChar echoChar `uc  1 a 1 wreg ]
+[v echo@echoChar echoChar `uc  1 a 1 0 ]
+"221
+} 0
+"102
+[v _InitApp InitApp `(v  1 e 1 0 ]
+{
+"129
+} 0
+"644
+[v _ConfigureOscillator ConfigureOscillator `(v  1 e 1 0 ]
+{
+"646
+} 0
