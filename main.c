@@ -18,12 +18,13 @@
 char version[] = {"v2.0 (beta) 24-July-2017"};
 
 // Includes
-//#include <xc.h>             // For hardware-specific stuff
+#include <xc.h>             // For hardware-specific stuff
 #include "stdio.h"          // stdio
 #include "stdlib.h"         // stdlib
 #include "stdbool.h"        // Booleans
 #include "stdint.h"         // Gives the uint8_t stuff
 #include "string.h"         // Strings
+#include "htc.h"            // Gives access to delays (?)
 
 // Setup bits
 // PIC18F2431 Configuration Bit Settings
@@ -81,22 +82,32 @@ char version[] = {"v2.0 (beta) 24-July-2017"};
 #define stepperpulsepin LATBbits.LATB2
 #define manualpin       LATBbits.LATB3
 
+/* Defining the ratio of quadrature pulses to centimeters */
+#define pulses_in_cm 100
+
 /* Definition regarding clocks and timing */
 #define _XTAL_FREQ = 8000000
 #define FP 40000000
 #define BAUDRATE 2400
 #define BRGVAL ((FP/BAUDRATE)/16)-1
 #define DELAY_105us asm volatile ("REPEAT, #4201"); Nop();
+#define ct_delay_ms(x) _delay((x)*(2))
+#define ct_delay_us(x) _delay((x)*(2000))
 
 /**
     Global variables
 **/
-char userCommand[99];
-int  userCommandPos = 0;
+unsigned char userCommand[20];
+unsigned int  userCommandPos = 0;
+
+unsigned char *userCommandTotal[20];
+unsigned char userCommandTotalPos = 0;
 
 unsigned long long steps_to_take = 0;
 unsigned long long steps_taken   = 0;
 unsigned int step_delay = 10;
+
+unsigned long long pulses_to_get = 0;
 
 long long steps_from_home = 0;
 
@@ -149,13 +160,47 @@ void InitApp(void)
     ANSEL0bits.ANS4 = 0;
 }
 
-void variableDelay_mu(int delay){
-
+// TODO- finish this
+void variableDelay_us(int delay){
+    switch(delay){
+        case 0:
+            break;
+        case 1:
+            ct_delay_us(1);
+            break;
+        case 2:
+            ct_delay_us(2);
+            break;
+        case 3:
+            ct_delay_us(3);
+            break;
+        case 4:
+            ct_delay_us(4);
+            break;
+        case 5:
+            ct_delay_us(5);
+            break;
+        case 6:
+            ct_delay_us(6);
+            break;
+        case 7:
+            ct_delay_us(7);
+            break;
+        case 8:
+            ct_delay_us(8);
+            break;
+        case 9:
+            ct_delay_us(9);
+            break;
+    }
 }
 
+//TODO- Also finsish this
+/*
 void variableDelay_ms(int delay){
 
 }
+ * */
 
 void doBlinks(void){
     ++blinks_taken;
@@ -165,20 +210,25 @@ void doBlinks(void){
     }
 }
 
+void setMovement(unsigned long long steps){
+    steps_to_take = steps;
+    steps_taken = 0;
+}
+
 void doMoves(void){
     stepperpulsepin = 1;
-    variableDelay_mu(step_delay);
+    variableDelay_us(step_delay);
     stepperpulsepin = 0;
-    variableDelay_mu(step_delay);
+    variableDelay_us(step_delay);
 }
 
 bool shouldMove(void){
     return (steps_taken != steps_to_take);
 }
 
-unsigned long long parseStringToInt(char toParse[], int startPoint){
+unsigned long long parseStringToInt(char toParse[], unsigned int startPoint){
     unsigned long long returnInt = 0;
-    int storeInt;
+    unsigned int storeInt;
     unsigned int count = startPoint;
     do{
         storeInt = toParse[count];
@@ -198,18 +248,34 @@ void echo(char echoChar){
     TXREG = echoChar;
 }
 
-void buildCommand(char charIn){
-    echo(charIn);
-    userCommand[userCommandPos] = charIn;
-    ++userCommandPos;
-}
-
 void clearUserCommand(void){
     unsigned int count = 0;
-    for(count = 0; count < 99; ++count){
+    for(count = 0; count <= 20; ++count){
         userCommand[count] = 0x0;
     }
     userCommandPos = 0;
+}
+
+void clearUserCommandTotal(void){
+    unsigned int count = 0;
+    clearUserCommand();
+
+    for(count = 0; count <= 20; ++count){
+        userCommand[count] = userCommand;
+    }
+    userCommandTotalPos = 0;
+}
+
+void buildCommand(unsigned char charIn){
+    echo(charIn);
+    if(charIn != ' '){
+        userCommand[userCommandPos] = charIn;
+        ++userCommandPos;
+    } else {
+        ++userCommandTotalPos;
+        userCommandTotal[userCommandTotalPos] = userCommand;
+        clearUserCommand();
+    }
 }
 
 void putch(unsigned char data){
@@ -232,7 +298,7 @@ int toNumber(char convertThis[]){
     int returnAmount = 0;
 
     for(count = 0; convertThis[count] != 0x0; ++count){
-        returnAmount += (changeThis[count] % 25) * count
+        returnAmount += (convertThis[count] % 25) * count;
     }
 
     return returnAmount;
@@ -246,6 +312,15 @@ bool waitForKey(void){
     return false;
 }
 
+void badFormatError(void){
+    printf("\n\rThe format of that command was not recognized.");
+    printf("\n\rPlease try a different command, or use 'help' for help.\n\r");
+}
+
+void setSteps(unsigned long long steps){
+    steps_to_take = steps;
+}
+
 void cli_clear(void){
     int count = 0;
     for(count = 0; count < 100; ++count){
@@ -256,7 +331,7 @@ void cli_clear(void){
 
 void cli_help(void){
     printf("\n\r");
-    printf("Spectrum Digitizer %s, Christopher Thierauf (chris@cthiearauf.com)\n\r", VERSION);
+    printf("Spectrum Digitizer %s, Christopher Thierauf (chris@cthiearauf.com)\n\r", version);
     printf("COMMMANDS\n\r");
     printf("   move     \t Move the motor a given number of steps.\n\r");
     printf("   movecm   \t Move the motor a given number of centimeters.\n\r");
@@ -272,6 +347,7 @@ void cli_help(void){
     printf("   goend    \t Go to the position set as end.\n\r");
     printf("   setend   \t Set the current position as end.\n\r");
     printf("   clear    \t Clear the screen.\n\r");
+    printf("   license  \t Print license information. ");
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
     printf("More help, documentation, and license info can be found in the manual.\n\r");
@@ -279,19 +355,30 @@ void cli_help(void){
     printf("cthierauf.com/digitizer-manual\n\r");
 }
 
+void cli_license(void){
+    printf("Spectral Digitizer: Code for the spectral digitzer project\n\r");
+    printf("Copyright (C) 2017  Chris Thierauf <chris@cthierauf.com>\n\r");
+    printf("\n\r");
+    printf("This program is free software: you can redistribute it and/or modify\n\r");
+    printf("it under the terms of the GNU General Public License as published by\n\r");
+    printf("the Free Software Foundation, either version 3 of the License, or\n\r");
+    printf("(at your option) any later version.\n\r");
+    printf("\n\r");
+    printf("This program is distributed in the hope that it will be useful,\n\r");
+    printf("but WITHOUT ANY WARRANTY; without even the implied warranty of\n\r");
+    printf("MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\r");
+    printf("GNU General Public License for more details.\n\r");
+    printf("\n\r");
+    printf("You should have received a copy of the GNU General Public License\n\r");
+    printf("along with this program.  If not, see <http://www.gnu.org/licenses/>.\n\r");
+}
+
 void cli_helpCommand(void){
-    char searchArray[20];
-    unsigned char count;
-
-    for(count = 0; count < 20; ++count){
-        searchArray[count] = userCommand[count+5];
-    }
-
-    printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r");
+    printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r", version);
 
     // The different commands are simplified into numbers so that they can be
     // placed into a switch statement.
-    switch (toNumber(searchArray)) {
+    switch (toNumber(userCommandTotal[1])) {
         case 43:    // goend
             printf("Usage: goend\n\r");
             printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
@@ -344,25 +431,61 @@ void cli_helpCommand(void){
     }
 }
 
-void cli_move(int steps){
-    steps_to_take = steps;
-    steps_taken = 0;
+void cli_move(void){
+    if(toNumber(userCommandTotal[1] == /*TODO- find what this value should be*/)){
+        directionpin = 1;
+        setMovement(parseStringToInt(userCommand, 10));
+        printf("Starting movement in left direction.\r\n");
+
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
+        directionpin = 0;
+        setMovement(parseStringToInt(userCommand, 11));
+        printf("Starting movement in the right direction.\r\n");
+
+    }else if(toNumber(userCommandTotal[1] == /*TODO*/)){ // Checking if the input after "move " is a number
+        setMovement(parseStringToInt(userCommand, 5));
+        printf("Starting movement in the default direction. \r\n");
+
+    } else {
+        badFormatError();
+    }
+}
+
+void cli_movecm(void){
+    if(toNumber(userCommandTotal[1] == /*TODO*/)){
+        directionpin = 1;
+        setMovement(parseStringToInt(userCommand, 12) * pulses_in_cm );
+        printf("Starting movement in left direction.\r\n");
+
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
+        directionpin = 0;
+        setMovement(parseStringToInt(userCommand, 13) * pulses_in_cm );
+        printf("Starting movement in the right direction.\r\n");
+
+    } else if((toNumber(userCommandTotal[1] == /*TODO*/))){ // Checking if the input after "move " is a number
+        setMovement(parseStringToInt(userCommand, 7) * pulses_in_cm );
+        printf("Starting movement in the default direction. \r\n");
+
+    } else {
+        badFormatError();
+
+    }
 }
 
 void cli_scan(void){
-    printf("Unimplemented function until the camera gets hooked up.\n\r", );
+    printf("Unimplemented function until the camera gets hooked up.\n\r");
 }
 
 void cli_direction(void){
-    if(userCommand[10] == 'l' || userCommand = 'L'){
+    if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 1;
-    } else if(userCommand[10] == 'r' || userCommand[10] == 'R'){
+    } else if(toNumber(userCommandTotal[1] == /*TODO*/)){
         directionpin = 0;
     } else {
         badFormatError();
     }
 
-    printf("Direction is %i\n\r", directionpin);
+    printf("Direction pin is %i\n\r", directionpin);
 }
 
 void cli_setdelay(void){
@@ -381,7 +504,8 @@ void cli_gohome(void){
     if(steps_from_home > 0){
         setSteps(steps_from_home);
     } else if(steps_from_home < 0){
-        direction ~= direction
+       ct_delay_ms(10);
+        directionpin = !directionpin;
         setSteps(steps_from_home * -1);
     }
 }
@@ -394,7 +518,8 @@ void cli_goend(void){
     if(steps_from_end > 0){
         setSteps(steps_from_end);
     } else if(steps_from_end < 0){
-        direction ~= direction
+        ct_delay_ms(10);
+        directionpin = !directionpin;
         setSteps(steps_from_end * -1);
     }
 }
@@ -421,7 +546,7 @@ void cli_halt(void){
 }
 
 void doInput(void){
-    switch (toNumber(userCommand)) {
+    switch (toNumber(userCommandTotal[0])) {
         case 43:    // goend
             cli_goend();
             break;
@@ -457,7 +582,7 @@ void doInput(void){
             cli_status();
             break;
         case 356:   // setdelay
-            setdelay();
+            cli_setdelay();
             break;
         case 399:   // direction
             cli_direction();
@@ -469,9 +594,10 @@ void doInput(void){
 
 void doBackspace(void){
     if(userCommandPos > 0){
-        userCommand[userCommandPos] = 127;
+        userCommand[userCommandPos] = (unsigned char) 0x0;
         --userCommandPos;
         printf("\b \b");
+
     }
 }
 
@@ -480,6 +606,7 @@ void setDefaultPinState(void){
     directionpin = 0;
     stepperpulsepin = 0;
     manualpin = 0;
+
 }
 
 void handleUART(void){
@@ -491,7 +618,7 @@ void handleUART(void){
             if(userCommandPos){
                 printf("\n\r");
                 doInput();
-                clearUserCommand();
+                clearUserCommandTotal();
             }
             printPrompt();
 
@@ -521,18 +648,18 @@ unsigned long long getPosition(void){
 void main(void){
     InitApp();
 
-    _delay_ms(100);
+    ct_delay_ms(100);
 
     setDefaultPinState();
     clearQuadRegister();
-    clearUserCommand();
+    clearUserCommandTotal();
 
     cli_clear();
     startmsg();
 
     while(1){
         handleUART();
-        shouldMove() ? doMoves():;
+        if(shouldMove()){ doMoves(); }
         doBlinks();
     }
 }
