@@ -33,7 +33,7 @@ char version[] = {"v3.0 (beta) 7-August-2017"};
 // PIC18F2431 Configuration Bit Settings
 // 'C' source line config statements
 // CONFIG1H
-#pragma config OSC = IRC        // Oscillator Selection bits (Internal oscillator block, port function on RA6 and port function on RA7)
+#pragma config OSC = HSPLL      // Oscillator Selection bits (HS oscillator, PLL enabled (clock frequency = 4 x FOSC1))
 #pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
 #pragma config IESO = ON        // Internal External Oscillator Switchover bit (Internal External Switchover mode enabled)
 // CONFIG2L
@@ -87,11 +87,11 @@ char version[] = {"v3.0 (beta) 7-August-2017"};
 
 /* Defining the ratio of quadrature pulses to centimeters */
 #define quadPulses_in_cm 100 // Defined because it's set in the spec sheet
-int  stepperPulses_in_cm 1;   // Variable so that it can be used in control loop
+int  stepperPulses_in_cm = 1;   // Variable so that it can be used in control loop
 
 /* Definition regarding clocks and timing */
 #define _XTAL_FREQ = 40000000
-#define FP 40000000 // With baudrate changes, is this right?
+#define FP 40 // Is this MIPS?
 #define BAUDRATE 9600
 #define BRGVAL ((FP/BAUDRATE)/16)-1
 #define DELAY_105us asm volatile ("REPEAT, #4201"); Nop();
@@ -118,12 +118,12 @@ unsigned long long steps_to_take = 0;   // The number of steps that need to be t
 unsigned long long steps_taken   = 0;   // The number of steps that have actually been taken
 unsigned int step_delay = 10;           // Desired minimum delay between pulses- here while testing only
 
-unsigned long long pulses_to_get = 0;   // Number of pulses expected to recieve (quadrature)
+unsigned long long pulses_to_get = 0;   // Number of pulses expected to receive (quadrature)
 long long steps_from_home = 0;          // The number of steps away from the home position
 long long steps_from_end = 0;           // The number of steps away from the end position
 
 // Blinking
-unsigned int blinks_every_x_cycles = 100;
+unsigned int blinks_every_x_cycles = 5000;
 unsigned int blinks_taken = 0;
 
 // InitApp: Sets up the pins.
@@ -131,16 +131,20 @@ void InitApp(void)
 {
     // TODO- go through and finally label all of these.
 
-    CONFIG1Hbits.FOSC = 0110;
+    //CONFIG1Hbits.FOSC = 0110;
     // UART stuff
-    RCSTAbits.SPEN = 1;
-    TRISCbits.RC6 = 1;
-    TRISCbits.RC7 = 1;
-    TXSTAbits.SYNC = 0;
-    TXSTAbits.BRGH = 1;
-    BAUDCONbits.BRG16 = 1;
-    SPBRGH = 00000100;
-    SPBRG  = 00010000;
+    RCSTAbits.SPEN = 1;     // Serial Port Enable bit (enabled)
+    TRISCbits.RC6 = 1;      // Enabling RC6 so it can be used in UART
+    TRISCbits.RC7 = 1;      // Enabling RC7 so it can be used in UART
+    TXSTAbits.SYNC = 0;     // EUSART Mode Select (synchronous)
+    TXSTAbits.BRGH = 0;     // High Baud Rate Select (low speed)
+    BAUDCONbits.BRG16 = 0;  // 16-Bit Baud Rate Register Enable (0 means only SPBRG used)
+
+    // Baud Rate Generator
+    // Aiming for 64, SPBRGH ignored b/c BRG16 is 0
+    //SPBRGH = ;
+    SPBRG  = 01000000;
+
 
     TXSTAbits.TXEN = 1;
     RCSTAbits.CREN = 1;
@@ -406,6 +410,7 @@ void cli_license(void){
 #define goend       43
 #define move        50
 #define help        53
+#define quad        61
 #define setend      76
 #define halt        86
 #define gohome      93
@@ -413,6 +418,7 @@ void cli_license(void){
 #define sethome     140
 #define manual      221
 #define status      251
+#define license     282
 #define setdelay    356
 #define direction   399
 
@@ -432,6 +438,9 @@ void cli_helpCommand(void){
             break;
         case help:
             printf("help: Get help on different functions and abilities of this digitizer.\n\r");
+            break;
+        case quad:
+            printf("quad: Display quadrature information, hit any key to stop.");
             break;
         case setend:
             printf("Usage: setend\n\r");
@@ -479,11 +488,11 @@ void cli_helpCommand(void){
 #define toNumberRight 87
 
 void cli_move(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    if(toNumber(userCommandTotal[1]) == toNumberLeft){
         directionpin = 1;
         printf("Starting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(toNumber(userCommandTotal[1]) == toNumberRight){
         directionpin = 0;
         setMovement(parseStringToInt(userCommand, 11));
         printf("Starting movement in the right direction.\r\n");
@@ -498,11 +507,11 @@ void cli_move(void){
 }
 
 void cli_movecm(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    if(toNumber(userCommandTotal[1]) == toNumberLeft){
         directionpin = 1;
         printf("Setting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(toNumber(userCommandTotal[1]) == toNumberRight){
         directionpin = 0;
         printf("Setting movement in the right direction.\r\n");
 
@@ -512,7 +521,7 @@ void cli_movecm(void){
     }
 
     //TODO- add checks to make sure the parser is getting a number
-    setMovementCM(parseStringToInt(userCommandTotal[2], 0));
+    //setMovementCM(parseStringToInt(userCommandTotal[2], 0));
 
 }
 
@@ -521,9 +530,9 @@ void cli_scan(void){
 }
 
 void cli_direction(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    if(toNumber(userCommandTotal[1]) == toNumberLeft){
         directionpin = 1;
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(toNumber(userCommandTotal[1]) == toNumberRight){
         directionpin = 0;
     } else {
         badFormatError();
@@ -589,9 +598,17 @@ void cli_halt(void){
     steps_taken     = 0;
     stepperpulsepin = 0;
     printf("Stopped. \r\n");
-    blinks_mode     = 0;
     printf("Entering manual mode. \r\n");
     cli_manual();
+}
+
+int cli_quad(void){
+    while(1){
+        printf("Displaying quadrature reading, press any key to stop: \r\n");
+        printf("%u\r", getPosition());
+        ct_delay_ms(10);
+        if(waitForKey()) { return 1; }
+    }
 }
 
 void doInput(void){
@@ -608,6 +625,9 @@ void doInput(void){
             } else {
                 cli_help();
             }
+            break;
+        case quad:
+            cli_quad();
             break;
         case setend:
             cli_setend();
@@ -629,6 +649,9 @@ void doInput(void){
             break;
         case status:
             cli_status();
+            break;
+        case license:
+            cli_license();
             break;
         case setdelay:
             cli_setdelay();
@@ -690,7 +713,7 @@ void clearQuadRegister(void){
     POSCNTH = 0;
 }
 
-unsigned long long getPosition(void){
+int getPosition(void){
     return (POSCNTH *256) + POSCNTL;
 }
 
