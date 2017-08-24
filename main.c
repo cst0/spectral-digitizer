@@ -17,7 +17,8 @@
  */
 
 // Version 3: Baud Rate and Clock changes
-char version[] = {"v3.0 (beta) 7-August-2017"};
+// Revision 1: Major tweaks to taking input, bug fixes on that too
+char version[] = {"v3.1 (beta) 7-August-2017"};
 
 // Includes
 #include <xc.h>             // For hardware-specific stuff
@@ -26,16 +27,14 @@ char version[] = {"v3.0 (beta) 7-August-2017"};
 #include "stdbool.h"        // Booleans
 #include "stdint.h"         // Gives the uint8_t stuff
 #include "string.h"         // Strings
-#include "htc.h"            // Gives access to delays (?)
-// TODO- test removing ^. With ct_delay_*, is this needed?
 
 // Setup bits
 // PIC18F2431 Configuration Bit Settings
 // 'C' source line config statements
 // CONFIG1H
-#pragma config OSC = IRC        // Oscillator Selection bits (Internal oscillator block, port function on RA6 and port function on RA7)
+#pragma config OSC = HSPLL      // Oscillator Selection bits (HS oscillator, PLL enabled (clock frequency = 4 x FOSC1))
 #pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit (Fail-Safe Clock Monitor disabled)
-#pragma config IESO = ON        // Internal External Oscillator Switchover bit (Internal External Switchover mode enabled)
+#pragma config IESO = OFF       // Internal External Oscillator Switchover bit (Internal External Switchover mode Disabled)
 // CONFIG2L
 #pragma config PWRTEN = OFF     // Power-up Timer Enable bit (PWRT disabled)
 #pragma config BOREN = OFF      // Brown-out Reset Enable bits (Brown-out Reset disabled)
@@ -87,11 +86,11 @@ char version[] = {"v3.0 (beta) 7-August-2017"};
 
 /* Defining the ratio of quadrature pulses to centimeters */
 #define quadPulses_in_cm 100 // Defined because it's set in the spec sheet
-int  stepperPulses_in_cm 1;   // Variable so that it can be used in control loop
+int  stepperPulses_in_cm = 1;   // Variable so that it can be used in control loop
 
 /* Definition regarding clocks and timing */
 #define _XTAL_FREQ = 40000000
-#define FP 40000000 // With baudrate changes, is this right?
+#define FP (_XTAL_FREQ*5)
 #define BAUDRATE 9600
 #define BRGVAL ((FP/BAUDRATE)/16)-1
 #define DELAY_105us asm volatile ("REPEAT, #4201"); Nop();
@@ -103,27 +102,24 @@ int  stepperPulses_in_cm 1;   // Variable so that it can be used in control loop
 /*
  * Global variables
  */
-unsigned char userCommand[20];      // The user's characters, as they're being typed
-unsigned int  userCommandPos = 0;   // The position in the userCommand array
+#define MAX_COMMAND_SIZE 50
+#define MAX_ARGS 5
+unsigned char user_command[MAX_COMMAND_SIZE];  // The user's characters, as they're being typed
+unsigned int user_command_pos = 0;    // The position in the userCommand array
+unsigned char tmparray[MAX_COMMAND_SIZE];
 
-/*
- * userCommandTotal is a pointer to a character array, where each point in the
- * array is used to store a different part of the command. [0] holds the command,
- * [1] holds the first argument, and so on.
- */
-unsigned char *userCommandTotal[20];
-unsigned char userCommandTotalPos = 0;
+int arg_positions[MAX_ARGS];                // The position of each argument
 
 unsigned long long steps_to_take = 0;   // The number of steps that need to be taken
 unsigned long long steps_taken   = 0;   // The number of steps that have actually been taken
-unsigned int step_delay = 10;           // Desired minimum delay between pulses- here while testing only
+#define step_delay 10           // Desired minimum delay between pulses- here while testing only
 
-unsigned long long pulses_to_get = 0;   // Number of pulses expected to recieve (quadrature)
-long long steps_from_home = 0;          // The number of steps away from the home position
-long long steps_from_end = 0;           // The number of steps away from the end position
+unsigned long long pulses_to_get = 0;   // Number of pulses expected to receive (quadrature)
+unsigned long long steps_from_home = 0;          // The number of steps away from the home position
+unsigned long long steps_from_end = 0;           // The number of steps away from the end position
 
 // Blinking
-unsigned int blinks_every_x_cycles = 100;
+unsigned int blinks_every_x_cycles = 5000;
 unsigned int blinks_taken = 0;
 
 // InitApp: Sets up the pins.
@@ -131,25 +127,30 @@ void InitApp(void)
 {
     // TODO- go through and finally label all of these.
 
-    CONFIG1Hbits.FOSC = 0110;
+    //CONFIG1Hbits.FOSC = 0110;
     // UART stuff
-    RCSTAbits.SPEN = 1;
-    TRISCbits.RC6 = 1;
-    TRISCbits.RC7 = 1;
-    TXSTAbits.SYNC = 0;
-    TXSTAbits.BRGH = 1;
-    BAUDCONbits.BRG16 = 1;
-    SPBRGH = 00000100;
-    SPBRG  = 00010000;
+    RCSTAbits.SPEN = 1;     // Serial Port Enable bit (enabled)
+    TRISCbits.RC6 = 1;      // Enabling RC6 so it can be used in UART
+    TRISCbits.RC7 = 1;      // Enabling RC7 so it can be used in UART
+    TXSTAbits.SYNC = 0;     // EUSART Mode Select (asynchronous)
+    TXSTAbits.BRGH = 0;     // High Baud Rate Select (0 = low speed)
+    BAUDCONbits.BRG16 = 0;  // 16-Bit Baud Rate Register Enable (0 means only SPBRG used)
 
-    TXSTAbits.TXEN = 1;
-    RCSTAbits.CREN = 1;
+    // Baud Rate Generator
+    //SPBRGH = ;
+    SPBRG  = 64;
 
-    OSCCONbits.IRCF2 = 1;
-    OSCCONbits.IRCF1 = 1;
-    OSCCONbits.IRCF0 = 1;
-    OSCCONbits.SCS1  = 1;
 
+    TXSTAbits.TXEN = 1; // Transmit Enable (enabled))
+    RCSTAbits.CREN = 1; // Continuous Receive Enable bit (enabled))
+
+    // Clock Settings
+    OSCCONbits.IRCF2 = 1; // Internal Oscillator Frequency Select bits
+    OSCCONbits.IRCF1 = 1; // Internal Oscillator Frequency Select bits
+    OSCCONbits.IRCF0 = 1; // Internal Oscillator Frequency Select bits
+    OSCCONbits.SCS1  = 1; // System Clock Select bits (should this be 0?)
+
+    // Setting pins like the LED
     TRISAbits.RA0 = 0;
     TRISAbits.RA2 = 1;
     TRISAbits.RA3 = 1;
@@ -160,58 +161,17 @@ void InitApp(void)
     TRISBbits.RB3 = 0;
     TRISBbits.RB4 = 0;
 
-    QEICONbits.VELM = 1;
-    QEICONbits.QEIM = 001;
-    QEICONbits.PDEC = 00;
+    QEICONbits.VELM = 1;    // Velocity Mode (disabled)
+    QEICONbits.QEIM = 001;  // QEI Mode (QEI enabled in 2x mode, INDX resets counter)
+    QEICONbits.PDEC = 00;   // Velocity Pulse Reduction (1:1)
 
+    // Analog Input Function Select Bits, 0 is Digital I/O
     ANSEL0bits.ANS0 = 0;
     ANSEL0bits.ANS1 = 0;
     ANSEL0bits.ANS2 = 0;
     ANSEL0bits.ANS3 = 0;
     ANSEL0bits.ANS4 = 0;
 }
-
-// TODO- finish this
-void variableDelay_us(int delay){
-    switch(delay){
-        case 0:
-            break;
-        case 1:
-            ct_delay_us(1);
-            break;
-        case 2:
-            ct_delay_us(2);
-            break;
-        case 3:
-            ct_delay_us(3);
-            break;
-        case 4:
-            ct_delay_us(4);
-            break;
-        case 5:
-            ct_delay_us(5);
-            break;
-        case 6:
-            ct_delay_us(6);
-            break;
-        case 7:
-            ct_delay_us(7);
-            break;
-        case 8:
-            ct_delay_us(8);
-            break;
-        case 9:
-            ct_delay_us(9);
-            break;
-    }
-}
-
-//TODO- Also finish this
-/*
-void variableDelay_ms(int delay){
-
-}
- * */
 
 void doBlinks(void){
     ++blinks_taken;
@@ -228,13 +188,67 @@ void setMovement(unsigned long long steps){
 
 void doMoves(void){
     stepperpulsepin = 1;
-    variableDelay_us(step_delay);
+    ct_delay_us(step_delay);
     stepperpulsepin = 0;
-    variableDelay_us(step_delay);
+    ct_delay_us(step_delay);
 }
 
 bool shouldMove(void){
-    return (steps_taken != steps_to_take);
+    return (unsigned) (steps_taken != steps_to_take);
+}
+
+void clear_tmparray(void){
+    tmparray[0] = '\n';
+}
+
+/*
+//TODO- these should be returning, not printing, their output
+void return_from_point(char *print, int point) {
+    char returnArray[sizeof(*print)];
+    int count = 0;
+    int *print_pointer = print + point;
+    while(*print) {
+        returnArray[count] = *print_pointer;
+        ++print;
+        ++count;
+    }
+}
+
+//TODO- these should be returning, not printing, their output
+char *return_between_points(char *print, int from, int to) {
+    char returnArray[sizeof(*print)];
+    char *tmp;
+    int count = 0;
+    for(tmp = print + from; *tmp && tmp < print + to; ++tmp) {
+        returnArray[count] = *tmp;
+        ++count;
+    }
+    return returnArray;
+}
+
+//TODO- these should be returning, not printing, their output
+char *return_between_minus_space(char *print, int from, int to) {
+    char returnArray[sizeof(*print)];
+    char *tmp;
+    int count = 0;
+    for (tmp = print + from; (*tmp) && (tmp < print + to) && ( *(tmp) != ' ' ); ++tmp) {
+            returnArray[count] = *tmp;
+            count++;
+    }
+    return returnArray;
+}*/
+
+//TODO- these should be returning, not printing, their output
+void tmparray_from_to_space(char *print, int from) {
+    clear_tmparray();
+    int count = 0;
+    for (char *tmp = print + from;
+        (*tmp) && ( *(tmp) != ' ' ) ;
+        ++tmp) {
+            tmparray[count] = (signed) *tmp;
+            count++;
+    }
+    tmparray[count] = (signed) '\n';
 }
 
 unsigned long long parseStringToInt(char toParse[], unsigned int startPoint){
@@ -244,12 +258,12 @@ unsigned long long parseStringToInt(char toParse[], unsigned int startPoint){
     do{
         storeInt = toParse[count];
         storeInt -= 48;
-        if(storeInt >= 0 && storeInt <= 9){
+        if(/*storeInt >= ) && */ storeInt <= 9){ // It's unsigned, no need to check for less than 0?
             returnInt = (returnInt*10)+storeInt;
             ++count;
         }
 
-    } while (storeInt >= 0 && storeInt <= 9);
+    } while (/*storeInt >= 0 &&*/ storeInt <= 9);
 
     return returnInt;
 }
@@ -259,41 +273,11 @@ void echo(char echoChar){
     TXREG = echoChar;
 }
 
-void clearUserCommand(void){
-    unsigned int count = 0;
-    for(count = 0; count <= 20; ++count){
-        userCommand[count] = 0x0;
-    }
-    userCommandPos = 0;
-}
-
-void clearUserCommandTotal(void){
-    unsigned int count = 0;
-    clearUserCommand();
-
-    for(count = 0; count <= 20; ++count){
-        userCommand[count] = userCommand;
-    }
-    userCommandTotalPos = 0;
-}
-
-void buildCommand(unsigned char charIn){
-    echo(charIn);
-
-    if(charIn == ' '){
-
-        if(userCommandTotal[userCommandTotalPos] != '\0'){
-            ++userCommandTotalPos;
-        }
-
-        userCommandTotal[userCommandTotalPos] = userCommand;
-        clearUserCommand();
-
-    } else {
-        userCommand[userCommandPos] = charIn;
-        ++userCommandPos;
-
-    }
+//TODO- userCommand doesn't exist anymore
+void clear_user_command(void){
+    user_command_pos = 0;
+    strcpy(user_command, '\0');
+    // TODO- get arg positions filled with 0's
 }
 
 void putch(unsigned char data){
@@ -313,16 +297,42 @@ void startmsg(void){
 
 }
 
+/*
+int toNumber(char *convertThis){
+    int returnAmount = 0;
+
+    for(; *convertThis && *convertThis != ' '; ++convertThis){
+        returnAmount =  (*convertThis % 25) + (returnAmount*100);
+
+    }
+    return returnAmount;
+
+}
+*/
+
 int toNumber(char convertThis[]){
     int count;
     int returnAmount = 0;
 
     for(count = 0; convertThis[count] != 0x0; ++count){
         returnAmount += (convertThis[count] % 25) * count;
-
     }
-    return returnAmount;
 
+    return returnAmount;
+}
+
+// Broken since user_command is no longer pointer?
+void separate_strings(char *string) {
+    char *tmp = string;
+    arg_positions[0] = 0;
+    for(unsigned int count = 1; *tmp; ++tmp) {
+        if(*tmp == ' '){
+            for(; *tmp == ' '; ++tmp) {
+                arg_positions[count] = (unsigned) (tmp-user_command+1);
+            }
+            ++count;
+        }
+    }
 }
 
 bool waitForKey(void){
@@ -374,7 +384,7 @@ void cli_help(void){
     printf("   goend    \t Go to the position set as end.\n\r");
     printf("   setend   \t Set the current position as end.\n\r");
     printf("   clear    \t Clear the screen.\n\r");
-    printf("   license  \t Print license information. ");
+    printf("   license  \t Print license information.\n\r");
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
     printf("More help, documentation, and license info can be found in the manual.\n\r");
@@ -402,90 +412,130 @@ void cli_license(void){
 
 }
 
-
+// TODO- this is wrong now
 #define goend       43
 #define move        50
 #define help        53
+#define quad        61
 #define setend      76
 #define halt        86
 #define gohome      93
 #define scan        98
+#define clear       132
 #define sethome     140
 #define manual      221
 #define status      251
+#define license     177
 #define setdelay    356
 #define direction   399
 
+//TODO- userCommand doesn't exist anymore
 void cli_helpCommand(void){
     printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r", version);
 
     // The different commands are simplified into numbers so that they can be
     // placed into a switch statement.
-    switch (toNumber(userCommandTotal[0])) {
+    separate_strings(user_command);
+    char command[MAX_COMMAND_SIZE];
+    tmparray_from_to_space(user_command, arg_positions[1]);
+    strcpy(command, tmparray);
+    
+    switch (toNumber(command)) {
+        case 0:
+            cli_help();
+            break;
         case goend:
             printf("Usage: goend\n\r");
             printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
             break;
+            
         case move:
             printf("Usage: move <direction> [steps]\n\r");
             printf("Moves the motor the given number of steps in the default direction, unless a direction has been given.\n\r");
             break;
+            
         case help:
             printf("help: Get help on different functions and abilities of this digitizer.\n\r");
+            break;
+            
+        case quad:
+            printf("quad: Display quadrature information, hit any key to stop.");
             break;
         case setend:
             printf("Usage: setend\n\r");
             printf("Set the current position as the end position so that it can be referenced by other commands.\n\r");
             break;
+            
         case halt:
             printf("help: Get help on different functions and abilities of this digitizer.\n\r");
             break;
+            
         case gohome:
             printf("Usage: gohome\n\r");
             printf("Go to the position remembered as 'home', defaulting to the startup position.\n\r");
             break;
+            
         case scan:
             printf("Usage: scan\n\r");
             printf("Scans from the home position to the end position, saving the digital output.\n\r");
             break;
+            
         case sethome:
             printf("Usage: sethome\n\r");
             printf("Set the current position as home so that it can be referenced by other commands.\n\r");
             break;
+            
         case manual:
             printf("Usage: manual\n\r");
             printf("Allow for manual movement of the slider by disengaging the motor. Hit any key to exit manual mode.\n\r");
             break;
+            
         case status:
             printf("Usage: status\n\r");
             printf("View the current status of various settings and activities of the digitizer.\n\r");
             break;
+            
         case setdelay:
             printf("Usage: setdelay [delay in ms]\n\r");
             printf("Sets the minimum delay between each step in milliseconds. Delays may end up slightly longer because of other commands being typed/executed.\n\r");
             break;
+            
         case direction:
             printf("Usage: direction [right/left]\n\r");
             printf("Sets the default direction of movement and scanning.\n\r");
             break;
+            
         default:
-            printf("That command wasn't found.\n\r");
-
+            printf("That command wasn't found. Here's the whole list: \n\r");
+            cli_help();
     }
 }
 
-
+// TODO- this is wrong now too
 #define toNumberLeft  53
 #define toNumberRight 87
 
+//TODO- userCommand doesn't exist anymore
 void cli_move(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    char direction_string[];
+    tmparray_from_to_space(user_command, arg_positions[1]);
+    strcpy(direction_string, tmparray);
+    int dir = 0;
+    dir = toNumber(*direction_string);
+    if(dir == toNumberLeft){
         directionpin = 1;
+        unsigned long long steps;
+        tmparray_from_to_space(user_command, arg_positions[2]);
+        steps = parseStringToInt(tmparray, 0);
+        setMovement( steps );
         printf("Starting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(dir == toNumberRight){
         directionpin = 0;
-        setMovement(parseStringToInt(userCommand, 11));
+        unsigned long long steps;
+        tmparray_from_to_space(user_command, arg_positions[2]);
+        steps = parseStringToInt(tmparray, 0);
+        setMovement( steps );
         printf("Starting movement in the right direction.\r\n");
 
     } else {
@@ -493,16 +543,24 @@ void cli_move(void){
     }
 
     //TODO- add checks to make sure the parser is getting a number
-    setMovement(parseStringToInt(userCommandTotal[2], 0));
+    setMovement( (unsigned) parseStringToInt(user_command, arg_positions[2]) );
 
 }
 
+//TODO- userCommand doesn't exist anymore
+/*
 void cli_movecm(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    char direction_array[10];
+    tmparray_from_to_space(user_command, arg_positions[1]);
+    strcpy(direction_array, tmparray);
+    int dir;
+    dir = toNumber(direction_array);
+
+    if(dir == toNumberLeft){
         directionpin = 1;
         printf("Setting movement in left direction.\r\n");
 
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(dir == toNumberRight){
         directionpin = 0;
         printf("Setting movement in the right direction.\r\n");
 
@@ -512,32 +570,42 @@ void cli_movecm(void){
     }
 
     //TODO- add checks to make sure the parser is getting a number
-    setMovementCM(parseStringToInt(userCommandTotal[2], 0));
+    //setMovementCM( parseStringToInt(user_command, arg_positions[2]) );
 
 }
-
+*/
 void cli_scan(void){
     printf("Unimplemented function until the camera gets hooked up.\n\r");
 }
 
+//TODO- userCommand doesn't exist anymore
 void cli_direction(void){
-    if(toNumber(userCommandTotal[1] == toNumberLeft)){
+    char direction_array[];
+    tmparray_from_to_space(user_command, arg_positions[1]);
+    int dir;
+    dir = toNumber(direction_array);
+
+    if(dir == toNumberLeft){
         directionpin = 1;
-    } else if(toNumber(userCommandTotal[1] == toNumberRight)){
+    } else if(dir == toNumberRight){
         directionpin = 0;
+    } else if(dir == move){
     } else {
         badFormatError();
     }
 
-    printf("Direction pin is %i", directionpin);
-    (directionpin) ? printf("left"): printf("right");
+    printf("Direction pin is %i: ", directionpin);
+        (directionpin) ? printf("left"): printf("right");
 
 }
 
+//TODO- userCommand doesn't exist anymore
+/* DEPRECATED
 void cli_setdelay(void){
-    step_delay = parseStringToInt(userCommand, 9);
+    step_delay;
+ *  = parseStringToInt(user_command, 9);
 }
-
+*/
 void cli_manual(void){
     printf("\n\rManual mode active. Move slider manually, hit any key to exit this mode.\n\r");
     manualpin = 1;
@@ -579,7 +647,7 @@ void cli_setend(void){
 
 void cli_status(void){
     printf("Version:    %s\n\r", version);
-    printf("Steps:      %u of %u\n\r", steps_taken, steps_to_take);
+    printf("Steps:      %i of %i\n\r", steps_taken, steps_to_take);
     printf("Direction:  %u\n\r", directionpin);
 }
 
@@ -589,13 +657,24 @@ void cli_halt(void){
     steps_taken     = 0;
     stepperpulsepin = 0;
     printf("Stopped. \r\n");
-    blinks_mode     = 0;
     printf("Entering manual mode. \r\n");
     cli_manual();
 }
 
-void doInput(void){
-    switch (toNumber(userCommandTotal[0])) {
+int cli_quad(void){
+    while(1){
+        printf("Displaying quadrature reading, press any key to stop: \r\n");
+        printf("%u\r", (int) getPosition());
+        ct_delay_ms(10);
+        if(waitForKey()) { return 1; }
+    }
+    return 0;
+}
+
+// TODO- userCommandTotal is gone now
+void doInput(char *command) {
+
+    switch (toNumber(command)) {
         case goend:
             cli_goend();
             break;
@@ -603,11 +682,10 @@ void doInput(void){
             cli_move();
             break;
         case help:
-            if( userCommandTotalPos > 0 ){
-                cli_helpCommand();
-            } else {
-                cli_help();
-            }
+            cli_helpCommand();
+            break;
+        case quad:
+            cli_quad();
             break;
         case setend:
             cli_setend();
@@ -619,10 +697,13 @@ void doInput(void){
             cli_gohome();
             break;
         case scan:
-            cli_setdelay();
+            cli_scan();
             break;
         case sethome:
             cli_sethome();
+            break;
+        case clear:
+            cli_clear();
             break;
         case manual:
             cli_manual();
@@ -630,8 +711,8 @@ void doInput(void){
         case status:
             cli_status();
             break;
-        case setdelay:
-            cli_setdelay();
+        case license:
+            cli_license();
             break;
         case direction:
             cli_direction();
@@ -641,10 +722,11 @@ void doInput(void){
     }
 }
 
+// TODO- userCommandTotal is gone now
 void doBackspace(void){
-    if(userCommandPos > 0){
-        userCommand[userCommandPos] = (unsigned char) 0x0;
-        --userCommandPos;
+    if(user_command_pos > 0){
+        user_command[user_command_pos] = (unsigned char) 0x0;
+        --user_command_pos;
         printf("\b \b");
 
     }
@@ -658,29 +740,34 @@ void setDefaultPinState(void){
 
 }
 
+// TODO- userCommandTotal is gone now
 void handleUART(void){
     char holderChar = 0x0;
 
     if(PIR1bits.RCIF){
         holderChar = RCREG;
         if(holderChar == 13 || holderChar == 10){ // Checking for Line Feed or Carriage Return
-            if(userCommandPos){
+            if(user_command_pos){
                 printf("\n\r");
-                doInput();
-                clearUserCommandTotal();
+                tmparray_from_to_space(user_command, 0);
+                char command[MAX_COMMAND_SIZE];
+                strcpy(command, tmparray);
+                doInput(command);
+                clear_user_command();
             }
             printPrompt();
 
         } else if (holderChar == 27) { // Checking for escape key
             printPrompt();
-            clearUserCommand();
+            clear_user_command();
 
         } else if (holderChar == 8 || holderChar == 127){ // Checking for backspace or delete
             doBackspace();
-
-        } else if ( (holderChar >= 'a' && holderChar <= 'z') || (holderChar >= '0' && holderChar <= '9') || (holderChar == ' ') ){ // Checking for letters, numbers, or space
-            buildCommand(holderChar);
-
+            
+        } else if ( (holderChar >= 'a' && holderChar <= 'z') || (holderChar >= '0' && holderChar <= '9')) { // Checking for letters, numbers, or space
+            echo(holderChar);
+            user_command[user_command_pos] = holderChar;
+            ++user_command_pos;
         }
     }
 }
@@ -690,7 +777,7 @@ void clearQuadRegister(void){
     POSCNTH = 0;
 }
 
-unsigned long long getPosition(void){
+int getPosition(void){
     return (POSCNTH *256) + POSCNTL;
 }
 
@@ -705,7 +792,7 @@ void main(void){
 
     setDefaultPinState();
     clearQuadRegister();
-    clearUserCommandTotal();
+    clear_user_command();
 
     cli_clear();
     startmsg();
