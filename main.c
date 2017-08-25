@@ -17,8 +17,8 @@
  */
 
 // Version 3: Baud Rate and Clock changes
-// Revision 1: Major tweaks to taking input, bug fixes on that too
-char version[] = {"v3.1 (beta) 7-August-2017"};
+// Revision 2: Added 'move lock', implemented movecm
+char version[] = {"v3.2 (beta) 7-August-2017"};
 
 // Includes
 #include <xc.h>             // For hardware-specific stuff
@@ -85,7 +85,7 @@ char version[] = {"v3.1 (beta) 7-August-2017"};
 #define manualpin       LATBbits.LATB3 // The pin that controls the manual mode
 
 /* Defining the ratio of quadrature pulses to centimeters */
-#define quadPulses_in_cm 100 // Defined because it's set in the spec sheet
+#define quadPulses_per_cm 100 // Defined because it's set in the spec sheet
 int  stepperPulses_in_cm = 1;   // Variable so that it can be used in control loop
 
 /* Definition regarding clocks and timing */
@@ -100,7 +100,7 @@ int  stepperPulses_in_cm = 1;   // Variable so that it can be used in control lo
 #define ct_delay_us(x) _delay((x)*(2000))
 
 /*
- * Global variables
+ * Global variables :(
  */
 #define MAX_COMMAND_SIZE 50
 #define MAX_ARGS 5
@@ -186,6 +186,11 @@ void setMovement(unsigned long long steps){
     steps_taken = 0;
 }
 
+void setMovementCM(unsigned long long cm){
+    steps_to_take = cm * quadPulses_per_cm;
+    steps_taken = 0;
+}
+
 void doMoves(void){
     stepperpulsepin = 1;
     ct_delay_us(step_delay);
@@ -200,43 +205,6 @@ bool shouldMove(void){
 void clear_tmparray(void){
     tmparray[0] = '\n';
 }
-
-/*
-//TODO- these should be returning, not printing, their output
-void return_from_point(char *print, int point) {
-    char returnArray[sizeof(*print)];
-    int count = 0;
-    int *print_pointer = print + point;
-    while(*print) {
-        returnArray[count] = *print_pointer;
-        ++print;
-        ++count;
-    }
-}
-
-//TODO- these should be returning, not printing, their output
-char *return_between_points(char *print, int from, int to) {
-    char returnArray[sizeof(*print)];
-    char *tmp;
-    int count = 0;
-    for(tmp = print + from; *tmp && tmp < print + to; ++tmp) {
-        returnArray[count] = *tmp;
-        ++count;
-    }
-    return returnArray;
-}
-
-//TODO- these should be returning, not printing, their output
-char *return_between_minus_space(char *print, int from, int to) {
-    char returnArray[sizeof(*print)];
-    char *tmp;
-    int count = 0;
-    for (tmp = print + from; (*tmp) && (tmp < print + to) && ( *(tmp) != ' ' ); ++tmp) {
-            returnArray[count] = *tmp;
-            count++;
-    }
-    return returnArray;
-}*/
 
 //TODO- these should be returning, not printing, their output
 void tmparray_from_to_space(char *print, int from) {
@@ -297,19 +265,6 @@ void startmsg(void){
 
 }
 
-/*
-int toNumber(char *convertThis){
-    int returnAmount = 0;
-
-    for(; *convertThis && *convertThis != ' '; ++convertThis){
-        returnAmount =  (*convertThis % 25) + (returnAmount*100);
-
-    }
-    return returnAmount;
-
-}
-*/
-
 int toNumber(char convertThis[]){
     int count;
     int returnAmount = 0;
@@ -321,14 +276,14 @@ int toNumber(char convertThis[]){
     return returnAmount;
 }
 
-// Broken since user_command is no longer pointer?
 void separate_strings(char *string) {
     char *tmp = string;
+    int  *tmp2 = string;
     arg_positions[0] = 0;
     for(unsigned int count = 1; *tmp; ++tmp) {
         if(*tmp == ' '){
             for(; *tmp == ' '; ++tmp) {
-                arg_positions[count] = (unsigned) (tmp-user_command+1);
+                arg_positions[count] = (unsigned) (tmp-tmp2+1);
             }
             ++count;
         }
@@ -374,8 +329,7 @@ void cli_help(void){
     printf("   movecm   \t Move the motor a given number of centimeters.\n\r");
     printf("   scan     \t Scan the full length of the plate.\n\r");
     printf("   scancm   \t Scan from the current position the given number of centimeters.\n\r");
-    printf("   direction\t Set the default direction for this session.\n\r");
-    printf("   setdelay \t Set the minimum delay between steps.\n\r");
+    printf("   direction\t Get the default direction for this session.\n\r");
     printf("   status   \t Get the current status of the digitizer.\n\r");
     printf("   halt     \t Stop all current actions.\n\r");
     printf("   manual   \t Allow for manual movement of slider (disengage motor)\n\r");
@@ -384,7 +338,7 @@ void cli_help(void){
     printf("   goend    \t Go to the position set as end.\n\r");
     printf("   setend   \t Set the current position as end.\n\r");
     printf("   clear    \t Clear the screen.\n\r");
-    printf("   license  \t Print license information.\n\r");
+    printf("   license  \t Print GPL license information.\n\r");
     printf("   help     \t Display this help dialogue\n\r");
     printf("Try help (command) for more information about the given command and command usage.\n\r");
     printf("More help, documentation, and license info can be found in the manual.\n\r");
@@ -412,9 +366,9 @@ void cli_license(void){
 
 }
 
-// TODO- this is wrong now
 #define goend       43
 #define move        50
+#define movecm      51 //? TODO
 #define help        53
 #define quad        61
 #define setend      76
@@ -426,10 +380,8 @@ void cli_license(void){
 #define manual      221
 #define status      251
 #define license     177
-#define setdelay    356
 #define direction   399
 
-//TODO- userCommand doesn't exist anymore
 void cli_helpCommand(void){
     printf("Spectrum Digitizer %s, Christopher Thierauf <chris@cthierauf.com>\n\r", version);
 
@@ -439,7 +391,7 @@ void cli_helpCommand(void){
     char command[MAX_COMMAND_SIZE];
     tmparray_from_to_space(user_command, arg_positions[1]);
     strcpy(command, tmparray);
-    
+
     switch (toNumber(command)) {
         case 0:
             cli_help();
@@ -448,148 +400,211 @@ void cli_helpCommand(void){
             printf("Usage: goend\n\r");
             printf("Go to the position remembered as 'end'. The end position has no default, set it with setend.\n\r");
             break;
-            
+
         case move:
-            printf("Usage: move <direction> [steps]\n\r");
+            printf("Usage: move <direction> [steps] <safemode>\n\r");
             printf("Moves the motor the given number of steps in the default direction, unless a direction has been given.\n\r");
+            printf("If 'safemode' is present, user can type 'halt' or other commands while moving. \n\r");
             break;
-            
+
+        case movecm:
+            printf("Usage: movecm <direction> [cm] <safemode>\n\r");
+            printf("Moves the motor the given number of centimeters in the default direction, unless a direction has been given.\n\r");
+            printf("If 'safemode' is present, user can type 'halt' or other commands while moving. \n\r");
+            break;
+
         case help:
             printf("help: Get help on different functions and abilities of this digitizer.\n\r");
             break;
-            
+
         case quad:
             printf("quad: Display quadrature information, hit any key to stop.");
             break;
+
         case setend:
             printf("Usage: setend\n\r");
             printf("Set the current position as the end position so that it can be referenced by other commands.\n\r");
             break;
-            
+
         case halt:
             printf("help: Get help on different functions and abilities of this digitizer.\n\r");
             break;
-            
+
         case gohome:
             printf("Usage: gohome\n\r");
             printf("Go to the position remembered as 'home', defaulting to the startup position.\n\r");
             break;
-            
+
         case scan:
             printf("Usage: scan\n\r");
             printf("Scans from the home position to the end position, saving the digital output.\n\r");
             break;
-            
+
         case sethome:
             printf("Usage: sethome\n\r");
             printf("Set the current position as home so that it can be referenced by other commands.\n\r");
             break;
-            
+
         case manual:
             printf("Usage: manual\n\r");
             printf("Allow for manual movement of the slider by disengaging the motor. Hit any key to exit manual mode.\n\r");
             break;
-            
+
         case status:
             printf("Usage: status\n\r");
             printf("View the current status of various settings and activities of the digitizer.\n\r");
             break;
-            
-        case setdelay:
-            printf("Usage: setdelay [delay in ms]\n\r");
-            printf("Sets the minimum delay between each step in milliseconds. Delays may end up slightly longer because of other commands being typed/executed.\n\r");
-            break;
-            
+
         case direction:
             printf("Usage: direction [right/left]\n\r");
             printf("Sets the default direction of movement and scanning.\n\r");
             break;
-            
+
         default:
             printf("That command wasn't found. Here's the whole list: \n\r");
             cli_help();
     }
 }
 
-// TODO- this is wrong now too
+
 #define toNumberLeft  53
 #define toNumberRight 87
+#define toNumberSafe  90 //? TODO
 
-//TODO- userCommand doesn't exist anymore
-void cli_move(void){
+int cli_move(void){
+
+    // This doesn't check if no direction is given, making direction command useless
     char direction_string[];
     tmparray_from_to_space(user_command, arg_positions[1]);
     strcpy(direction_string, tmparray);
     int dir = 0;
     dir = toNumber(*direction_string);
-    if(dir == toNumberLeft){
-        directionpin = 1;
-        unsigned long long steps;
-        tmparray_from_to_space(user_command, arg_positions[2]);
-        steps = parseStringToInt(tmparray, 0);
-        setMovement( steps );
-        printf("Starting movement in left direction.\r\n");
 
-    } else if(dir == toNumberRight){
-        directionpin = 0;
-        unsigned long long steps;
-        tmparray_from_to_space(user_command, arg_positions[2]);
-        steps = parseStringToInt(tmparray, 0);
-        setMovement( steps );
-        printf("Starting movement in the right direction.\r\n");
+    if(dir == toNumberLeft) {
+        directionpin = 1;
+    } else if (dir == toNumberRight) {
+        directionpin = 0
+    } else {
+        badFormatError();
+        return -1;
+    }
+
+    unsigned long long steps;
+    tmparray_from_to_space(user_command, arg_positions[2]);
+    steps = parseStringToInt(tmparray, 0);
+
+    tmparray_from_to_space(user_command, arg_positions[3]);
+    if(toNumber(tmparray) == 0){
+        printf("The program is currently moving in locked mode because 'safe' was not specified in the command. \r\n");
+        printf("This mode is faster and more precise, but cannot be halted from the command line.\r\n");
+
+        printf("Starting movement in the ");
+        (dir == toNumberLeft) ? printf("left "): printf("right ");
+        printf("direction.\r\n");
+        setMovement(steps);
+        while(steps_taken != steps_to_take) {
+            stepperpulsepin = 0;
+            ct_delay_us(step_delay);
+            stepperpulsepin = 1;
+            ct_delay_us(step_delay);
+            ++steps_taken;
+        }
+        steps_taken = 0;
+        steps_to_take = 0;
+        printf("Movement Complete! \r\n");
+
+    } else if(toNumber(tmparray) == toNumberSafe){
+        setMovement(steps);
+        printf("Starting movement in the ");
+        (dir == toNumberLeft) ? printf("left "): printf("right ");
+        printf("direction.\r\n");
+
+        //TODO- add checks to make sure the parser is getting a number
+        setMovement( (unsigned) parseStringToInt(user_command, arg_positions[2]) );
 
     } else {
         badFormatError();
     }
 
-    //TODO- add checks to make sure the parser is getting a number
-    setMovement( (unsigned) parseStringToInt(user_command, arg_positions[2]) );
+    return 0;
 
 }
 
-//TODO- userCommand doesn't exist anymore
-/*
-void cli_movecm(void){
-    char direction_array[10];
+int cli_movecm(void){
+
+    // This doesn't check if no direction is given, making direction command useless
+    char direction_string[];
     tmparray_from_to_space(user_command, arg_positions[1]);
-    strcpy(direction_array, tmparray);
-    int dir;
-    dir = toNumber(direction_array);
+    strcpy(direction_string, tmparray);
+    int dir = 0;
+    dir = toNumber(*direction_string);
 
-    if(dir == toNumberLeft){
+    if(dir == toNumberLeft) {
         directionpin = 1;
-        printf("Setting movement in left direction.\r\n");
+    } else if (dir == toNumberRight) {
+        directionpin = 0
+    } else {
+        badFormatError();
+        return -1;
+    }
 
-    } else if(dir == toNumberRight){
-        directionpin = 0;
-        printf("Setting movement in the right direction.\r\n");
+    unsigned long long cm;
+    tmparray_from_to_space(user_command, arg_positions[2]);
+    cm = parseStringToInt(tmparray, 0);
+
+    tmparray_from_to_space(user_command, arg_positions[3]);
+    if(toNumber(tmparray) == 0){
+        printf("The program is currently moving in locked mode because 'safe' was not specified in the command. \r\n");
+        printf("This mode is faster and more precise, but cannot be halted from the command line.\r\n");
+
+        printf("Starting movement in the ");
+        (dir == toNumberLeft) ? printf("left "): printf("right ");
+        printf("direction.\r\n");
+        clearQuadRegister();
+        while(cm != (getPosition())){
+            stepperpulsepin = 0;
+            ct_delay_us(step_delay);
+            stepperpulsepin = 1;
+            ct_delay_us(step_delay);
+            if(cm < getPosition()){
+                directionpin ~= directionpin;
+            }
+        }
+        steps_taken = 0;
+        steps_to_take = 0;
+        printf("Movement Complete! \r\n");
+
+    } else if(toNumber(tmparray) == toNumberSafe){
+        setMovementCM(steps);
+        printf("Starting movement in the ");
+        (dir == toNumberLeft) ? printf("left "): printf("right ");
+        printf("direction.\r\n");
+
+        //TODO- add checks to make sure the parser is getting a number
+        setMovement( (unsigned) parseStringToInt(user_command, arg_positions[2]) );
 
     } else {
         badFormatError();
-
     }
 
-    //TODO- add checks to make sure the parser is getting a number
-    //setMovementCM( parseStringToInt(user_command, arg_positions[2]) );
+    return 0;
 
 }
-*/
 void cli_scan(void){
     printf("Unimplemented function until the camera gets hooked up.\n\r");
 }
 
 //TODO- userCommand doesn't exist anymore
 void cli_direction(void){
-    char direction_array[];
     tmparray_from_to_space(user_command, arg_positions[1]);
     int dir;
-    dir = toNumber(direction_array);
+    dir = toNumber(tmparray);
 
     if(dir == toNumberLeft){
         directionpin = 1;
     } else if(dir == toNumberRight){
         directionpin = 0;
-    } else if(dir == move){
+    } else if(dir == 0){
     } else {
         badFormatError();
     }
@@ -599,13 +614,6 @@ void cli_direction(void){
 
 }
 
-//TODO- userCommand doesn't exist anymore
-/* DEPRECATED
-void cli_setdelay(void){
-    step_delay;
- *  = parseStringToInt(user_command, 9);
-}
-*/
 void cli_manual(void){
     printf("\n\rManual mode active. Move slider manually, hit any key to exit this mode.\n\r");
     manualpin = 1;
@@ -657,6 +665,11 @@ void cli_halt(void){
     steps_taken     = 0;
     stepperpulsepin = 0;
     printf("Stopped. \r\n");
+    printf("Clearing quad register and some arrays... ");
+    clearQuadRegister();
+    clear_tmparray();
+    clear_user_command();
+    printf("Stopped.\r\n")
     printf("Entering manual mode. \r\n");
     cli_manual();
 }
@@ -664,14 +677,13 @@ void cli_halt(void){
 int cli_quad(void){
     while(1){
         printf("Displaying quadrature reading, press any key to stop: \r\n");
-        printf("%u\r", (int) getPosition());
+        printf("%u\r", (unsigned int) getPosition());
         ct_delay_ms(10);
         if(waitForKey()) { return 1; }
     }
     return 0;
 }
 
-// TODO- userCommandTotal is gone now
 void doInput(char *command) {
 
     switch (toNumber(command)) {
@@ -680,6 +692,9 @@ void doInput(char *command) {
             break;
         case move:
             cli_move();
+            break;
+        case movecm:
+            cli_movecm();
             break;
         case help:
             cli_helpCommand();
@@ -722,7 +737,6 @@ void doInput(char *command) {
     }
 }
 
-// TODO- userCommandTotal is gone now
 void doBackspace(void){
     if(user_command_pos > 0){
         user_command[user_command_pos] = (unsigned char) 0x0;
@@ -740,7 +754,6 @@ void setDefaultPinState(void){
 
 }
 
-// TODO- userCommandTotal is gone now
 void handleUART(void){
     char holderChar = 0x0;
 
@@ -763,7 +776,7 @@ void handleUART(void){
 
         } else if (holderChar == 8 || holderChar == 127){ // Checking for backspace or delete
             doBackspace();
-            
+
         } else if ( (holderChar >= 'a' && holderChar <= 'z') || (holderChar >= '0' && holderChar <= '9')) { // Checking for letters, numbers, or space
             echo(holderChar);
             user_command[user_command_pos] = holderChar;
@@ -777,8 +790,8 @@ void clearQuadRegister(void){
     POSCNTH = 0;
 }
 
-int getPosition(void){
-    return (POSCNTH *256) + POSCNTL;
+double getPosition(void){
+    return ((POSCNTH *256) + POSCNTL) / (double) quadPulses_per_cm;
 }
 
 void handlecm(void){
